@@ -16,7 +16,7 @@ Prior to delivering the workshop, please:
 
 | Resource                      | Link                                                                             | Description                                                                                |
 |-------------------------------|----------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| Workshop slide deck           | _To be provided by the maintainer_                                               | Presentation slides for this workshop with presenter notes and embedded demo videos        |
+| Workshop slide deck           | [Workshop Deck](./foundry-toolkit-deck.pptx)                                               | Presentation slides for this workshop with presenter notes and embedded demo videos        |
 | Session delivery recording    | _To be provided by the maintainer_                                               | Workshop intro and slide walkthrough recording                                              |
 | Workshop end-to-end recording | _To be provided by the maintainer_                                               | End-to-end recording of both labs from a learner's perspective                              |
 | Workshop documentation        | [Repository](https://github.com/microsoft-foundry/Foundry_Toolkit_for_VSCode_Lab) | Source repository, lab READMEs, step-by-step modules                                       |

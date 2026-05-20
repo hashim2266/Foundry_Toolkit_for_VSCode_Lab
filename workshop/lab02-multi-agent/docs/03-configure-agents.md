@@ -30,7 +30,7 @@ flowchart LR
 2. Fill in your Foundry project details:
 
    ```env
-   PROJECT_ENDPOINT=https://<your-account>.services.ai.azure.com/api/projects/<your-project>
+   AZURE_AI_PROJECT_ENDPOINT=https://<your-account>.services.ai.azure.com/api/projects/<your-project>
    MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
    ```
 
@@ -47,20 +47,15 @@ flowchart LR
 
 ### Environment variable mapping
 
-The multi-agent `main.py` reads both standard and workshop-specific env var names:
-
 ```python
-PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("PROJECT_ENDPOINT")
-MODEL_DEPLOYMENT_NAME = os.getenv(
-    "AZURE_AI_MODEL_DEPLOYMENT_NAME",
-    os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini"),
-)
+PROJECT_ENDPOINT = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+MODEL_DEPLOYMENT_NAME = os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini")
 MICROSOFT_LEARN_MCP_ENDPOINT = os.getenv(
     "MICROSOFT_LEARN_MCP_ENDPOINT", "https://learn.microsoft.com/api/mcp"
 )
 ```
 
-The MCP endpoint has a sensible default - you don't need to set it in `.env` unless you want to override it.
+The MCP endpoint has a sensible default — only set it in `.env` if you need to override it.
 
 ---
 
@@ -263,7 +258,7 @@ async def search_microsoft_learn_for_plan(
 
 ### MCP dependencies
 
-The MCP client libraries are included transitively via [`agent-framework-core`](https://learn.microsoft.com/agent-framework/overview/). You do **not** need to add them to `requirements.txt` separately. If you get import errors, verify:
+The MCP client libraries are included transitively via [`agent-framework`](https://learn.microsoft.com/agent-framework/overview/). You do **not** need to add them to `requirements.txt` separately. If you get import errors, verify:
 
 ```powershell
 pip list | Select-String "mcp"
@@ -275,91 +270,70 @@ Expected: `mcp` package is installed (version 1.x or later).
 
 ## Step 4: Wire the agents and workflow
 
-### 4.1 Create agents with context managers
+### 4.1 Create agents
+
+All four agents share one `FoundryChatClient`. Wrap each in `AgentExecutor` to make them workflow-graph nodes:
 
 ```python
-from contextlib import asynccontextmanager
+from agent_framework import Agent, AgentExecutor
+from agent_framework.foundry import FoundryChatClient
+from azure.identity import DefaultAzureCredential
 
-@asynccontextmanager
-async def create_agents():
-    async with (
-        get_credential() as credential,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="ResumeParser",
-            instructions=RESUME_PARSER_INSTRUCTIONS,
-        ) as resume_parser,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="JobDescriptionAgent",
-            instructions=JOB_DESCRIPTION_INSTRUCTIONS,
-        ) as jd_agent,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="MatchingAgent",
-            instructions=MATCHING_AGENT_INSTRUCTIONS,
-        ) as matching_agent,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="GapAnalyzer",
-            instructions=GAP_ANALYZER_INSTRUCTIONS,
-            tools=[search_microsoft_learn_for_plan],
-        ) as gap_analyzer,
-    ):
-        yield resume_parser, jd_agent, matching_agent, gap_analyzer
+client = FoundryChatClient(
+    project_endpoint=PROJECT_ENDPOINT,
+    model=MODEL_DEPLOYMENT_NAME,
+    credential=DefaultAzureCredential(),
+)
+
+resume_parser   = Agent(client=client, instructions=RESUME_PARSER_INSTRUCTIONS,   name="ResumeParser")
+jd_agent        = Agent(client=client, instructions=JOB_DESCRIPTION_INSTRUCTIONS, name="JobDescriptionAgent")
+matching_agent  = Agent(client=client, instructions=MATCHING_AGENT_INSTRUCTIONS,  name="MatchingAgent")
+gap_analyzer    = Agent(client=client, instructions=GAP_ANALYZER_INSTRUCTIONS,    name="GapAnalyzer",
+                        tools=[search_microsoft_learn_for_plan])
+
+resume_executor   = AgentExecutor(resume_parser,   context_mode="last_agent")
+jd_executor       = AgentExecutor(jd_agent,        context_mode="last_agent")
+matching_executor = AgentExecutor(matching_agent,  context_mode="last_agent")
+gap_executor      = AgentExecutor(gap_analyzer,    context_mode="last_agent")
 ```
 
-**Key points:**
-- Each agent has its **own** `AzureAIAgentClient` instance
-- Only GapAnalyzer gets `tools=[search_microsoft_learn_for_plan]`
-- `get_credential()` returns [`ManagedIdentityCredential`](https://learn.microsoft.com/python/api/overview/azure/identity-readme#managed-identity-support) in Azure, [`DefaultAzureCredential`](https://learn.microsoft.com/azure/developer/python/sdk/authentication/credential-chains#defaultazurecredential-overview) locally
+`AgentExecutor` is the workflow node abstraction — `context_mode="last_agent"` means each agent only sees its direct predecessor's output. Only GapAnalyzer gets `tools=[search_microsoft_learn_for_plan]`.
 
 ### 4.2 Build the workflow graph
 
+Wire the executors into a directed acyclic graph:
+
 ```python
-def create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer):
-    workflow = (
-        WorkflowBuilder(
-            name="ResumeJobFitEvaluator",
-            start_executor=resume_parser,
-            output_executors=[gap_analyzer],
-        )
-        .add_edge(resume_parser, jd_agent)
-        .add_edge(resume_parser, matching_agent)
-        .add_edge(jd_agent, matching_agent)
-        .add_edge(matching_agent, gap_analyzer)
-        .build()
+workflow_agent = (
+    WorkflowBuilder(
+        start_executor=resume_executor,      # receives user input
+        output_executors=[gap_executor],     # output returned to caller
     )
-    return workflow.as_agent()
+    .add_edge(resume_executor, jd_executor)       # fan-out: resume → JD
+    .add_edge(resume_executor, matching_executor) # fan-out: resume → matching
+    .add_edge(jd_executor, matching_executor)     # fan-in: JD → matching (waits for both)
+    .add_edge(matching_executor, gap_executor)    # sequential: matching → gap
+    .build()
+    .as_agent()
+)
 ```
 
-> See [Workflows as Agents](https://learn.microsoft.com/agent-framework/workflows/as-agents) to understand the `.as_agent()` pattern.
+The `.as_agent()` call converts the built workflow into an agent interface that `ResponsesHostServer` can serve.
 
 ### 4.3 Start the server
 
 ```python
-async def main() -> None:
-    validate_configuration()
-    async with create_agents() as (resume_parser, jd_agent, matching_agent, gap_analyzer):
-        agent = create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer)
-        from azure.ai.agentserver.agentframework import from_agent_framework
-        await from_agent_framework(agent).run_async()
+from agent_framework_foundry_hosting import ResponsesHostServer
+
+def main():
+    # ... create client, agents, executors, workflow_agent (Steps 4.1–4.2) ...
+    ResponsesHostServer(workflow_agent).run()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
 ```
+
+`ResponsesHostServer` handles all HTTP routing and exposes the workflow at `http://localhost:8088/responses`.
 
 ---
 
@@ -390,24 +364,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> **Note:** The `agent-dev-cli --pre` line in `requirements.txt` ensures the latest preview version is installed. This is required for compatibility with `agent-framework-core==1.0.0rc3`.
-
 ### 5.4 Verify installation
 
 ```powershell
-pip list | Select-String "agent-framework|agentserver|agent-dev"
+pip list | Select-String "agent-framework|debugpy"
 ```
 
 Expected output:
 ```
-agent-dev-cli                  0.0.1b260316
-agent-framework-azure-ai       1.0.0rc3
-agent-framework-core            1.0.0rc3
-azure-ai-agentserver-agentframework 1.0.0b16
-azure-ai-agentserver-core      1.0.0b16
+agent-framework                1.1.x
+agent-framework-foundry-hosting  x.x.x
+debugpy                        x.x.x
 ```
-
-> **If `agent-dev-cli` shows an older version** (e.g., `0.0.1b260119`), the Agent Inspector will fail with 403/404 errors. Upgrade: `pip install agent-dev-cli --pre --upgrade`
 
 ---
 
@@ -427,14 +395,14 @@ For multi-agent workflows, all four agents share the same credential. If authent
 
 ### Checkpoint
 
-- [ ] `.env` has valid `PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` values
+- [ ] `.env` has valid `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` values
 - [ ] All 4 agent instruction constants are defined in `main.py` (ResumeParser, JD Agent, MatchingAgent, GapAnalyzer)
 - [ ] The `search_microsoft_learn_for_plan` MCP tool is defined and registered with GapAnalyzer
-- [ ] `create_agents()` creates all 4 agents with individual `AzureAIAgentClient` instances
-- [ ] `create_workflow()` builds the correct graph with `WorkflowBuilder`
+- [ ] `FoundryChatClient` + 4 `Agent` + 4 `AgentExecutor` objects created in `main()`
+- [ ] `WorkflowBuilder` builds the correct graph with all 4 edges
 - [ ] Virtual environment is created and activated (`(.venv)` visible)
 - [ ] `pip install -r requirements.txt` completes without errors
-- [ ] `pip list` shows all expected packages at the correct versions (rc3 / b16)
+- [ ] `pip list` shows `agent-framework>=1.1.0` and `agent-framework-foundry-hosting`
 - [ ] `az account show` returns your subscription
 
 ---

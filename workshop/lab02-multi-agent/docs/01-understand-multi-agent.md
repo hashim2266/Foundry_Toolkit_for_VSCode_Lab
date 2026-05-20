@@ -24,7 +24,7 @@ By splitting into **four specialized agents**, each one focuses on its task with
 
 ## The four agents
 
-Each agent is a full [Microsoft Foundry](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) agent created via `AzureAIAgentClient.as_agent()`. They share the same model deployment but have different instructions and (optionally) different tools.
+Each agent is a full [Microsoft Foundry](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) with its own instructions and role created using the `Agent` class from the `agent-framework` SDK. They are orchestrated together in a workflow using `WorkflowBuilder`.
 
 | # | Agent Name | Role | Input | Output |
 |---|-----------|------|-------|--------|
@@ -192,45 +192,52 @@ DELETE https://learn.microsoft.com/api/mcp → 405 (Method Not Allowed)
 
 ## Agent creation pattern
 
-Each agent is created using the **[`AzureAIAgentClient.as_agent()`](https://learn.microsoft.com/python/api/overview/azure/ai-agents-readme) async context manager**. This is the Foundry SDK pattern for creating agents that are automatically cleaned up:
+All four agents share a single [`FoundryChatClient`](https://learn.microsoft.com/agent-framework/foundry/). Each `Agent` is wrapped in an [`AgentExecutor`](https://learn.microsoft.com/agent-framework/workflows/) — the unit the `WorkflowBuilder` operates on:
 
 ```python
-async with (
-    get_credential() as credential,
-    AzureAIAgentClient(
-        project_endpoint=PROJECT_ENDPOINT,
-        model_deployment_name=MODEL_DEPLOYMENT_NAME,
-        credential=credential,
-    ).as_agent(
-        name="ResumeParser",
-        instructions=RESUME_PARSER_INSTRUCTIONS,
-    ) as resume_parser,
-    # ... repeat for each agent ...
-):
-    # All 4 agents exist here
-    workflow = create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer)
+client = FoundryChatClient(
+    project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+    model=os.environ["MODEL_DEPLOYMENT_NAME"],
+    credential=DefaultAzureCredential(),
+)
+
+resume_parser   = Agent(client=client, instructions=RESUME_PARSER_INSTRUCTIONS,   name="ResumeParser")
+jd_agent        = Agent(client=client, instructions=JOB_DESCRIPTION_INSTRUCTIONS, name="JobDescriptionAgent")
+matching_agent  = Agent(client=client, instructions=MATCHING_AGENT_INSTRUCTIONS,  name="MatchingAgent")
+gap_analyzer    = Agent(client=client, instructions=GAP_ANALYZER_INSTRUCTIONS,    name="GapAnalyzer",
+                        tools=[search_microsoft_learn_for_plan])
+
+resume_executor   = AgentExecutor(resume_parser,   context_mode="last_agent")
+jd_executor       = AgentExecutor(jd_agent,        context_mode="last_agent")
+matching_executor = AgentExecutor(matching_agent,  context_mode="last_agent")
+gap_executor      = AgentExecutor(gap_analyzer,    context_mode="last_agent")
 ```
 
-**Key points:**
-- Each agent gets its own `AzureAIAgentClient` instance (the SDK requires agent name to be scoped to the client)
-- All agents share the same `credential`, `PROJECT_ENDPOINT`, and `MODEL_DEPLOYMENT_NAME`
-- The `async with` block ensures all agents are cleaned up when the server shuts down
-- The GapAnalyzer additionally receives `tools=[search_microsoft_learn_for_plan]`
+`context_mode="last_agent"` means each agent only sees its immediate predecessor's output. For converging agents (MatchingAgent receives from both ResumeParser and JD Agent), the framework concatenates both outputs before passing them in. Only GapAnalyzer gets `tools=[search_microsoft_learn_for_plan]`.
 
 ---
 
 ## Server startup
 
-After creating agents and building the workflow, the server starts:
+The workflow graph is served as a single HTTP endpoint:
 
 ```python
-from azure.ai.agentserver.agentframework import from_agent_framework
-
-agent = create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer)
-await from_agent_framework(agent).run_async()
+workflow_agent = (
+    WorkflowBuilder(
+        start_executor=resume_executor,
+        output_executors=[gap_executor],
+    )
+    .add_edge(resume_executor, jd_executor)
+    .add_edge(resume_executor, matching_executor)
+    .add_edge(jd_executor, matching_executor)
+    .add_edge(matching_executor, gap_executor)
+    .build()
+    .as_agent()
+)
+ResponsesHostServer(workflow_agent).run()
 ```
 
-`from_agent_framework()` wraps the workflow as an HTTP server exposing the `/responses` endpoint on port 8088. This is the same pattern as Lab 01, but the "agent" is now the entire [workflow graph](https://learn.microsoft.com/agent-framework/workflows/as-agents).
+`ResponsesHostServer` exposes the workflow at `http://localhost:8088/responses`. Callers interact with one endpoint — the internal 4-agent topology is transparent.
 
 ---
 
@@ -240,7 +247,7 @@ await from_agent_framework(agent).run_async()
 - [ ] You can trace the data flow: User → ResumeParser → (parallel) JD Agent + MatchingAgent → GapAnalyzer → Output
 - [ ] You understand why MatchingAgent waits for both ResumeParser and JD Agent (two incoming edges)
 - [ ] You understand the MCP tool: what it does, how it's called, and that GET 405 logs are normal
-- [ ] You understand the `AzureAIAgentClient.as_agent()` pattern and why each agent has its own client instance
+- [ ] You can map each `AgentExecutor` to a workflow graph node and read the `WorkflowBuilder` edge declarations
 - [ ] You can read the `WorkflowBuilder` code and map it to the visual graph
 
 ---

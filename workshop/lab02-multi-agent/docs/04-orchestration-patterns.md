@@ -18,11 +18,11 @@ flowchart LR
     style C fill:#7B68EE,color:#fff
 ```
 
-In code, this happens because `resume_parser` is the `start_executor` - it receives the user message first. Then, because both `jd_agent` and `matching_agent` have edges from `resume_parser`, the framework routes `resume_parser`'s output to both agents:
+In code, this happens because `resume_executor` is the `start_executor` - it receives the user message first. Then, because both `jd_executor` and `matching_executor` have edges from `resume_executor`, the framework routes `resume_executor`'s output to both agents:
 
 ```python
-.add_edge(resume_parser, jd_agent)         # ResumeParser output → JD Agent
-.add_edge(resume_parser, matching_agent)   # ResumeParser output → MatchingAgent
+.add_edge(resume_executor, jd_executor)         # ResumeParser output → JD Agent
+.add_edge(resume_executor, matching_executor)   # ResumeParser output → MatchingAgent
 ```
 
 **Why this works:** ResumeParser and JD Agent process different aspects of the same input. Running them in parallel reduces total latency compared to running them sequentially.
@@ -54,8 +54,8 @@ flowchart LR
 In code:
 
 ```python
-.add_edge(resume_parser, matching_agent)   # ResumeParser output → MatchingAgent
-.add_edge(jd_agent, matching_agent)        # JD Agent output → MatchingAgent
+.add_edge(resume_executor, matching_executor)   # ResumeParser output → MatchingAgent
+.add_edge(jd_executor, matching_executor)       # JD Agent output → MatchingAgent
 ```
 
 **Key behavior:** When an agent has **two or more incoming edges**, the framework automatically waits for **all** upstream agents to complete before running the downstream agent. MatchingAgent does not start until both ResumeParser and JD Agent have finished.
@@ -100,7 +100,7 @@ flowchart LR
 In code:
 
 ```python
-.add_edge(matching_agent, gap_analyzer)    # MatchingAgent output → GapAnalyzer
+.add_edge(matching_executor, gap_executor)    # MatchingAgent output → GapAnalyzer
 ```
 
 This is the simplest pattern. GapAnalyzer receives MatchingAgent's fit score, matched/missing skills, and gaps. It then calls the [MCP tool](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/model-context-protocol) for each gap to fetch Microsoft Learn resources.
@@ -155,40 +155,37 @@ gantt
 Here is the complete `create_workflow()` function from `main.py`, annotated:
 
 ```python
-def create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer):
-    workflow = (
-        WorkflowBuilder(
-            name="ResumeJobFitEvaluator",
+workflow_agent = (
+    WorkflowBuilder(
+        # The first AgentExecutor to receive user input
+        start_executor=resume_executor,
 
-            # The first agent to receive user input
-            start_executor=resume_parser,
-
-            # The agent(s) whose output becomes the final response
-            output_executors=[gap_analyzer],
-        )
-        # Fan-out: ResumeParser output goes to both JD Agent and MatchingAgent
-        .add_edge(resume_parser, jd_agent)
-        .add_edge(resume_parser, matching_agent)
-
-        # Fan-in: MatchingAgent waits for both ResumeParser and JD Agent
-        .add_edge(jd_agent, matching_agent)
-
-        # Sequential: MatchingAgent output feeds GapAnalyzer
-        .add_edge(matching_agent, gap_analyzer)
-
-        .build()
+        # The AgentExecutor(s) whose output becomes the final response
+        output_executors=[gap_executor],
     )
-    return workflow.as_agent()
+    # Fan-out: ResumeParser output goes to both JD Agent and MatchingAgent
+    .add_edge(resume_executor, jd_executor)
+    .add_edge(resume_executor, matching_executor)
+
+    # Fan-in: MatchingAgent waits for both ResumeParser and JD Agent
+    .add_edge(jd_executor, matching_executor)
+
+    # Sequential: MatchingAgent output feeds GapAnalyzer
+    .add_edge(matching_executor, gap_executor)
+
+    .build()
+    .as_agent()
+)
 ```
 
 ### Edge summary table
 
 | # | Edge | Pattern | Effect |
 |---|------|---------|--------|
-| 1 | `resume_parser → jd_agent` | Fan-out | JD Agent receives ResumeParser's output (plus the original user input) |
-| 2 | `resume_parser → matching_agent` | Fan-out | MatchingAgent receives ResumeParser's output |
-| 3 | `jd_agent → matching_agent` | Fan-in | MatchingAgent also receives JD Agent's output (waits for both) |
-| 4 | `matching_agent → gap_analyzer` | Sequential | GapAnalyzer receives fit report + gap list |
+| 1 | `resume_executor → jd_executor` | Fan-out | JD Agent receives ResumeParser's output |
+| 2 | `resume_executor → matching_executor` | Fan-out | MatchingAgent receives ResumeParser's output |
+| 3 | `jd_executor → matching_executor` | Fan-in | MatchingAgent also receives JD Agent's output (waits for both) |
+| 4 | `matching_executor → gap_executor` | Sequential | GapAnalyzer receives fit report + gap list |
 
 ---
 
@@ -206,22 +203,20 @@ Given a gap analysis and fit report, generate 10 targeted interview questions
 the candidate should prepare for.
 """
 
-# 2. Create the agent (inside the async with block)
-AzureAIAgentClient(
-    project_endpoint=PROJECT_ENDPOINT,
-    model_deployment_name=MODEL_DEPLOYMENT_NAME,
-    credential=credential,
-).as_agent(
-    name="InterviewPrepAgent",
+# 2. Create the agent and executor
+interview_prep = Agent(
+    client=client,
     instructions=INTERVIEW_PREP_INSTRUCTIONS,
-) as interview_prep,
+    name="InterviewPrepAgent",
+)
+interview_exec = AgentExecutor(interview_prep, context_mode="last_agent")
 
-# 3. Add edges in create_workflow()
-.add_edge(matching_agent, interview_prep)   # receives fit report
-.add_edge(gap_analyzer, interview_prep)     # also receives gap cards
+# 3. Add edges in WorkflowBuilder
+.add_edge(matching_executor, interview_exec)   # receives fit report
+.add_edge(gap_executor, interview_exec)        # also receives gap cards
 
 # 4. Update output_executors
-output_executors=[interview_prep],  # now the final agent
+output_executors=[interview_exec],  # now the final agent
 ```
 
 ### Changing execution order
@@ -229,10 +224,10 @@ output_executors=[interview_prep],  # now the final agent
 To make JD Agent run **after** ResumeParser (sequential instead of parallel):
 
 ```python
-# Remove: .add_edge(resume_parser, jd_agent)  ← already exists, keep it
-# Remove the implicit parallel by NOT having jd_agent receive user input directly
-# The start_executor sends to resume_parser first, and jd_agent only gets
-# resume_parser's output via the edge. This makes them sequential.
+# Remove: .add_edge(resume_executor, jd_executor)  ← already exists, keep it
+# Remove the implicit parallel by NOT having jd_executor receive user input directly
+# The start_executor sends to resume_executor first, and jd_executor only gets
+# resume_executor's output via the edge. This makes them sequential.
 ```
 
 > **Important:** The `start_executor` is the only agent that receives the raw user input. All other agents receive output from their upstream edges. If you want an agent to also receive the raw user input, it must have an edge from the `start_executor`.
@@ -270,7 +265,7 @@ Add logging to `main.py` to trace data flow:
 import logging
 logger = logging.getLogger("resume-job-fit")
 
-# In create_workflow(), after building:
+# In main(), after building the workflow:
 logger.info("Workflow graph built with edges: RP→JD, RP→MA, JD→MA, MA→GA")
 ```
 

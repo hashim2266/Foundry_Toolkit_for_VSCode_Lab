@@ -146,57 +146,49 @@ environment_variables:
 
 The scaffold includes:
 - **Multiple agent instruction strings** (one const per agent)
-- **Multiple [`AzureAIAgentClient.as_agent()`](https://learn.microsoft.com/python/api/overview/azure/ai-agents-readme) context managers** (one per agent)
-- **[`WorkflowBuilder`](https://learn.microsoft.com/agent-framework/workflows/agents-in-workflows)** to wire agents together
-- **`from_agent_framework()`** to serve the workflow as an HTTP endpoint
+- **[`Agent` + `AgentExecutor`](https://learn.microsoft.com/agent-framework/workflows/)** — one per agent, wrapped for the workflow graph
+- **[`WorkflowBuilder`](https://learn.microsoft.com/agent-framework/workflows/agents-in-workflows)** to define edges between agents
+- **`ResponsesHostServer`** to serve the workflow as an HTTP endpoint
 
 ```python
-from agent_framework import WorkflowBuilder, tool
-from agent_framework.azure import AzureAIAgentClient
-from azure.ai.agentserver.agentframework import from_agent_framework
+from agent_framework import Agent, AgentExecutor, WorkflowBuilder, tool
+from agent_framework.foundry import FoundryChatClient
+from agent_framework_foundry_hosting import ResponsesHostServer
 ```
 
-The extra import [`WorkflowBuilder`](https://learn.microsoft.com/agent-framework/workflows/agents-in-workflows) is new compared to Lab 01.
+`AgentExecutor` and `WorkflowBuilder` are the key additions compared to Lab 01's single-agent pattern.
 
-### 8.3 `requirements.txt` - Additional dependencies
-
-The multi-agent project uses the same base packages as Lab 01, plus any MCP-related packages:
+### 8.3 `requirements.txt` - Dependencies
 
 ```
-agent-framework-azure-ai==1.0.0rc3
-agent-framework-core==1.0.0rc3
-azure-ai-agentserver-agentframework==1.0.0b16
-azure-ai-agentserver-core==1.0.0b16
+agent-framework>=1.1.0
+agent-framework-foundry-hosting
 debugpy
-agent-dev-cli --pre
 ```
 
-> **Important version note:** The `agent-dev-cli` package requires the `--pre` flag in `requirements.txt` to install the latest preview version. This is required for Agent Inspector compatibility with `agent-framework-core==1.0.0rc3`. See [Module 8 - Troubleshooting](08-troubleshooting.md) for version details.
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| [`agent-framework-azure-ai`](https://learn.microsoft.com/agent-framework/overview/) | `1.0.0rc3` | Azure AI integration for [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) |
-| [`agent-framework-core`](https://learn.microsoft.com/agent-framework/overview/) | `1.0.0rc3` | Core runtime (includes WorkflowBuilder) |
-| `azure-ai-agentserver-agentframework` | `1.0.0b16` | Hosted agent server runtime |
-| `azure-ai-agentserver-core` | `1.0.0b16` | Core agent server abstractions |
-| `debugpy` | latest | Python debugging (F5 in VS Code) |
-| `agent-dev-cli` | `--pre` | Local dev CLI + Agent Inspector backend |
+| Package | Purpose |
+|---------|---------|
+| [`agent-framework>=1.1.0`](https://learn.microsoft.com/agent-framework/overview/) | Core runtime: `Agent`, `AgentExecutor`, `WorkflowBuilder`, `@tool` |
+| [`agent-framework-foundry-hosting`](https://learn.microsoft.com/agent-framework/) | `ResponsesHostServer` + Foundry hosting integration |
+| `debugpy` | Python debugging (F5 in VS Code) |
 
 ### 8.4 `Dockerfile` - Same as Lab 01
 
 The Dockerfile is identical to Lab 01's - it copies files, installs dependencies from `requirements.txt`, exposes port 8088, and runs `python main.py`.
 
 ```dockerfile
-FROM python:3.14-slim
+FROM python:3.12-slim
 WORKDIR /app
-COPY ./ .
-RUN pip install --upgrade pip && \
-    if [ -f requirements.txt ]; then \
+COPY . user_agent/
+WORKDIR /app/user_agent
+RUN if [ -f requirements.txt ]; then \
         pip install -r requirements.txt; \
     else \
-      echo "No requirements.txt found" >&2; exit 1; \
+        echo "No requirements.txt found"; \
     fi
+
 EXPOSE 8088
+
 CMD ["python", "main.py"]
 ```
 
@@ -207,7 +199,7 @@ CMD ["python", "main.py"]
 - [ ] Scaffold wizard completed → new project structure is visible
 - [ ] You can see all files: `agent.yaml`, `main.py`, `Dockerfile`, `requirements.txt`, `.env`
 - [ ] `main.py` includes `WorkflowBuilder` import (confirms multi-agent template was selected)
-- [ ] `requirements.txt` includes both `agent-framework-core` and `agent-framework-azure-ai`
+- [ ] `requirements.txt` includes `agent-framework>=1.1.0` and `agent-framework-foundry-hosting`
 - [ ] You understand how the multi-agent scaffold differs from the single-agent scaffold (multiple agents, WorkflowBuilder, MCP tools)
 
 ---

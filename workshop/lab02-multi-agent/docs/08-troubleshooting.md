@@ -8,12 +8,12 @@ This module covers common errors, fixes, and debugging strategies specific to th
 
 | Error / Symptom | Likely Cause | Fix |
 |----------------|-------------|-----|
-| `RuntimeError: Missing required environment variable(s)` | `.env` file missing or values not set | Create `.env` with `PROJECT_ENDPOINT=<your-endpoint>` and `MODEL_DEPLOYMENT_NAME=<your-model>` |
+| `RuntimeError: Missing required environment variable(s)` | `.env` file missing or values not set | Create `.env` with `AZURE_AI_PROJECT_ENDPOINT=<your-endpoint>` and `MODEL_DEPLOYMENT_NAME=<your-model>` |
 | `ModuleNotFoundError: No module named 'agent_framework'` | Virtual environment not activated or dependencies not installed | Run `.\.venv\Scripts\Activate.ps1` then `pip install -r requirements.txt` |
 | `ModuleNotFoundError: No module named 'mcp'` | MCP package not installed (missing from requirements) | Run `pip install mcp` or check `requirements.txt` includes it as a transitive dependency |
-| Agent starts but returns empty response | `output_executors` mismatch or missing edges | Verify `output_executors=[gap_analyzer]` and all edges exist in `create_workflow()` |
+| Agent starts but returns empty response | `output_executors` mismatch or missing edges | Verify `output_executors=[gap_executor]` and all edges exist in `WorkflowBuilder` |
 | Only 1 gap card (rest missing) | GapAnalyzer instructions incomplete | Add the `CRITICAL:` paragraph to `GAP_ANALYZER_INSTRUCTIONS` - see [Module 3](03-configure-agents.md) |
-| Fit score is 0 or absent | MatchingAgent didn't receive upstream data | Verify both `add_edge(resume_parser, matching_agent)` and `add_edge(jd_agent, matching_agent)` exist |
+| Fit score is 0 or absent | MatchingAgent didn't receive upstream data | Verify both `add_edge(resume_executor, matching_executor)` and `add_edge(jd_executor, matching_executor)` exist |
 | `POST https://learn.microsoft.com/api/mcp → 4xx/5xx` | MCP server rejected the tool call | Check internet connectivity. Try opening `https://learn.microsoft.com/api/mcp` in browser. Retry |
 | No Microsoft Learn URLs in output | MCP tool not registered or endpoint wrong | Verify `tools=[search_microsoft_learn_for_plan]` on GapAnalyzer and `MICROSOFT_LEARN_MCP_ENDPOINT` is correct |
 | `Address already in use: port 8088` | Another process is using port 8088 | Run `netstat -ano \| findstr :8088` (Windows) or `lsof -i :8088` (macOS/Linux) and stop the conflicting process |
@@ -45,7 +45,7 @@ PersonalCareerCopilot/
 Expected `.env` content:
 
 ```env
-PROJECT_ENDPOINT=https://<your-project-name>.services.ai.azure.com/api/projects/<your-project-id>
+AZURE_AI_PROJECT_ENDPOINT=https://<your-project-name>.services.ai.azure.com/api/projects/<your-project-id>
 MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
 ```
 
@@ -57,14 +57,14 @@ MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
 
 ### Env var precedence
 
-`main.py` uses `load_dotenv(override=False)`, which means:
+`main.py` uses `load_dotenv(override=True)`, which means:
 
 | Priority | Source | Wins when both are set? |
 |----------|--------|------------------------|
-| 1 (highest) | Shell environment variable | Yes |
-| 2 | `.env` file | Only if shell var is not set |
+| 1 (highest) | `.env` file | Yes (`override=True`) |
+| 2 | Shell environment variable | Only if not in `.env` |
 
-This means Foundry runtime env vars (set via `agent.yaml`) take precedence over `.env` values during hosted deployment.
+In hosted deployment, Foundry sets env vars at the container level (via `agent.yaml`). Set `override=False` if you want container env vars to take precedence.
 
 ---
 
@@ -76,11 +76,9 @@ The multi-agent workflow requires specific package versions. Mismatched versions
 
 | Package | Required Version | Check Command |
 |---------|-----------------|---------------|
-| `agent-framework-core` | `1.0.0rc3` | `pip show agent-framework-core` |
-| `agent-framework-azure-ai` | `1.0.0rc3` | `pip show agent-framework-azure-ai` |
-| `azure-ai-agentserver-agentframework` | `1.0.0b16` | `pip show azure-ai-agentserver-agentframework` |
-| `azure-ai-agentserver-core` | `1.0.0b16` | `pip show azure-ai-agentserver-core` |
-| `agent-dev-cli` | latest stable | `pip show agent-dev-cli` |
+| `agent-framework` | `>=1.1.0` | `pip show agent-framework` |
+| `agent-framework-foundry-hosting` | latest | `pip show agent-framework-foundry-hosting` |
+| `debugpy` | latest | `pip show debugpy` |
 | Python | 3.10+ | `python --version` |
 
 ### Common version errors
@@ -88,15 +86,8 @@ The multi-agent workflow requires specific package versions. Mismatched versions
 **`ImportError: cannot import name 'WorkflowBuilder' from 'agent_framework'`**
 
 ```powershell
-# Fix: upgrade to rc3
-pip install agent-framework-core==1.0.0rc3 agent-framework-azure-ai==1.0.0rc3
-```
-
-**`agent-dev-cli` not found or Inspector incompatible:**
-
-```powershell
-# Fix: install/update stable package
-pip install agent-dev-cli --upgrade
+# Fix: upgrade agent-framework
+pip install "agent-framework>=1.1.0" agent-framework-foundry-hosting
 ```
 
 **`AttributeError: module 'mcp.client' has no attribute 'streamable_http'`**
@@ -109,19 +100,16 @@ pip install mcp --upgrade
 ### Verify all versions at once
 
 ```powershell
-pip list | Select-String "agent-framework|azure-ai-agent|agent-dev|mcp|debugpy"
+pip list | Select-String "agent-framework|mcp|debugpy"
 ```
 
 Expected output:
 
 ```
-agent-dev-cli                  x.x.x
-agent-framework-azure-ai       1.0.0rc3
-agent-framework-core            1.0.0rc3
-azure-ai-agentserver-agentframework 1.0.0b16
-azure-ai-agentserver-core      1.0.0b16
-debugpy                         x.x.x
-mcp                             x.x.x
+agent-framework                  1.1.x
+agent-framework-foundry-hosting  x.x.x
+debugpy                          x.x.x
+mcp                              x.x.x
 ```
 
 ---

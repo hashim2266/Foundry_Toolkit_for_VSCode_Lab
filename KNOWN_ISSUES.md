@@ -2,119 +2,80 @@
 
 This document tracks known issues with the current repository state.
 
-> Last updated: 2026-04-15. Tested against Python 3.13 / Windows in `.venv_ga_test`.
+> Last updated: 2026-05-21. Tested against Python 3.13 / Windows. Foundry Toolkit v1.2.1.
 
 ---
 
-## Current Package Pins (all three agents)
+## Current Package Pins
 
-| Package | Current Version |
-|---------|----------------|
-| `agent-framework-azure-ai` | `1.0.0rc3` |
-| `agent-framework-core` | `1.0.0rc3` |
-| `azure-ai-agentserver-agentframework` | `1.0.0b16` |
-| `azure-ai-agentserver-core` | `1.0.0b16` |
-| `agent-dev-cli` | `--pre` *(fixed — see KI-003)* |
+### Lab 01 (`workshop/lab01-single-agent/agent/`)
+
+| Package | Constraint |
+|---------|------------|
+| `agent-framework` | `>=1.1.0` |
+| `agent-framework-foundry-hosting` | latest |
+| `debugpy` | latest |
+
+### Lab 02 (`workshop/lab02-multi-agent/PersonalCareerCopilot/`)
+
+| Package | Constraint |
+|---------|------------|
+| `agent-framework` | `>=1.1.0` |
+| `agent-framework-foundry-hosting` | latest |
+| `debugpy` | latest |
+| `mcp` | latest |
 
 ---
 
-## KI-001 — GA 1.0.0 Upgrade Blocked: `agent-framework-azure-ai` Removed
+## KI-001 - Teams/M365 Publish Succeeds but Agent Unreachable (BotId/ClientId Mismatch)
 
-**Status:** Open | **Severity:** 🔴 High | **Type:** Breaking
+**Status:** Open | **Severity:** 🔴 High | **Type:** Integration bug | **Ref:** [vscode-ai-toolkit#381](https://github.com/microsoft/vscode-ai-toolkit/issues/381)
 
 ### Description
 
-The `agent-framework-azure-ai` package (pinned at `1.0.0rc3`) was **removed/deprecated**
-in the GA release (1.0.0, released 2026-04-02). It is replaced by:
+Publishing a Hosted Agent to Teams/M365 Copilot via Foundry Toolkit completes successfully but the agent is **not reachable** on those channel surfaces.
 
-- `agent-framework-foundry==1.0.0` — Foundry-hosted agent pattern
-- `agent-framework-openai==1.0.0` — OpenAI-backed agent pattern
+Root cause: **Publish** (registers bot channel artifacts) and **Deploy** (starts live hosted runtime) are two separate operations. Without Deploy, no running backend exists behind the endpoint.
 
-All three `main.py` files import `AzureAIAgentClient` from `agent_framework.azure`, which
-raises `ImportError` under GA packages. The `agent_framework.azure` namespace still exists
-in GA but now contains only Azure Functions classes (`DurableAIAgent`,
-`AzureAISearchContextProvider`, `CosmosHistoryProvider`) — not Foundry agents.
-
-### Confirmed error (`.venv_ga_test`)
+Error observed when Bot Service attempts to route traffic:
 
 ```
-ImportError: cannot import name 'AzureAIAgentClient' from 'agent_framework.azure'
-  (~\.venv_ga_test\Lib\site-packages\agent_framework\azure\__init__.py)
+Failed to publish agent BotId '<id>' does not match the application's default instance identity ClientId '<id>'.
+[Status: 400, Code: UserError]
 ```
 
-### Files affected
+Azure Bot Service sends Bot Framework JWTs (`iss=https://api.botframework.com`). The current Foundry gateway auth path does not fully accept this token shape in this configuration.
 
-| File | Line |
-|------|------|
-| `ExecutiveAgent/main.py` | 15 |
-| `workshop/lab01-single-agent/agent/main.py` | 15 |
-| `workshop/lab02-multi-agent/PersonalCareerCopilot/main.py` | 22 |
+**Deploy blocker:** Deploy Hosted Agent requires a local Docker build. No cloud-side build fallback is currently offered.
+
+### Workaround
+
+Test using the **web chat** channel in Azure Bot Service - this path works correctly. Teams/M365 channel integration is blocked until upstream auth and UX issues are resolved.
 
 ---
 
-## KI-002 — `azure-ai-agentserver` Incompatible with GA `agent-framework-core`
+## KI-002 - No Dedicated Multi-Agent Template in Foundry Toolkit v1.2.1
 
-**Status:** Open | **Severity:** 🔴 High | **Type:** Breaking (blocked on upstream)
-
-### Description
-
-`azure-ai-agentserver-agentframework==1.0.0b17` (latest) hard-pins
-`agent-framework-core<=1.0.0rc3`. Installing it alongside `agent-framework-core==1.0.0` (GA)
-forces pip to **downgrade** `agent-framework-core` back to `rc3`, which then breaks
-`agent-framework-foundry==1.0.0` and `agent-framework-openai==1.0.0`.
-
-The `from azure.ai.agentserver.agentframework import from_agent_framework` call used by all
-agents to bind the HTTP server is therefore also blocked.
-
-### Confirmed dependency conflict (`.venv_ga_test`)
-
-```
-ERROR: pip's dependency resolver does not currently take into account all the packages
-that are installed. This behaviour is the source of the following dependency conflicts.
-agent-framework-foundry 1.0.0 requires agent-framework-core<2,>=1.0.0,
-  but you have agent-framework-core 1.0.0rc3 which is incompatible.
-agent-framework-openai 1.0.0 requires agent-framework-core<2,>=1.0.0,
-  but you have agent-framework-core 1.0.0rc3 which is incompatible.
-```
-
-### Files affected
-
-All three `main.py` files — both the top-level import and the in-function import in `main()`.
-
----
-
-## KI-003 — `agent-dev-cli --pre` Flag No Longer Needed
-
-**Status:** ✅ Fixed (non-breaking) | **Severity:** 🟢 Low
+**Status:** Open | **Severity:** 🟡 Medium | **Type:** Feature gap
 
 ### Description
 
-All `requirements.txt` files previously included `agent-dev-cli --pre` to pull the
-pre-release CLI. Since GA 1.0.0 was released on 2026-04-02, the stable release of
-`agent-dev-cli` is now available without the `--pre` flag.
+The Foundry Toolkit v1.2.1 wizard flow is identical for both Lab 01 and Lab 02: **Language → API Type → Template → Model → Workspace/Folder**. The template step offers:
 
-**Fix applied:** The `--pre` flag has been removed from all three `requirements.txt` files.
+- Echo (Streaming)
+- Multi-Turn Chat
+- Note Taking
+- **Basic - Agent Framework** ← used in both Lab 01 and Lab 02
 
----
+There is no dedicated multi-agent template. The scaffold always generates a **single-agent stub** (`Agent` + `ResponsesHostServer`, no `WorkflowBuilder` code).
 
-## KI-004 — Dockerfiles Use `python:3.14-slim` (Pre-release Base Image)
+### Workshop impact
 
-**Status:** Open | **Severity:** 🟡 Low
-
-### Description
-
-All `Dockerfile`s use `FROM python:3.14-slim` which tracks a pre-release Python build.
-For production deployments this should be pinned to a stable release (e.g., `python:3.12-slim`).
-
-### Files affected
-
-- `ExecutiveAgent/Dockerfile`
-- `workshop/lab01-single-agent/agent/Dockerfile`
-- `workshop/lab02-multi-agent/PersonalCareerCopilot/Dockerfile`
+Lab 02 learners scaffold with **Basic - Agent Framework** (same as Lab 01), then replace the generated `main.py` stub with the full `WorkflowBuilder` graph (four agents, MCP tool, fan-out/fan-in edges). Lab 02 therefore points learners at the pre-built **`PersonalCareerCopilot/`** folder as the complete reference implementation.
 
 ---
 
 ## References
 
-- [agent-framework-core on PyPI](https://pypi.org/project/agent-framework-core/)
-- [agent-framework-foundry on PyPI](https://pypi.org/project/agent-framework-foundry/)
+- [Azure/azure-sdk-for-python#46324](https://github.com/Azure/azure-sdk-for-python/issues/46324) - SDK fix pending (open)
+- [microsoft/vscode-ai-toolkit#381](https://github.com/microsoft/vscode-ai-toolkit/issues/381) - Teams/M365 publish + auth (open)

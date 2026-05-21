@@ -13,9 +13,9 @@ In this module, you customize the auto-scaffolded agent files from Module 3. Thi
 ```mermaid
 sequenceDiagram
     participant User
-    participant Server as Agent Server<br/>(HTTP :8088)
-    participant Agent as Executive Summary Agent
-    participant Model as Azure AI Model<br/>(gpt-4.1-mini)
+    participant Server as ResponsesHostServer<br/>(HTTP :8088)
+    participant Agent as Agent(client=FoundryChatClient)
+    participant Model as Foundry model deployment
 
     User->>Server: POST /responses (technical update)
     Server->>Agent: Forward user message
@@ -30,18 +30,21 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User
-    participant Agent as Executive Summary Agent
+    participant Server as ResponsesHostServer
+    participant Agent as Agent(client=FoundryChatClient)
     participant Model as Azure AI Model
     participant Tool as Python Tool Function
 
-    User->>Agent: User message
+    User->>Server: POST /responses
+    Server->>Agent: User message
     Agent->>Model: Instructions + message + tool definitions
     Model-->>Agent: tool_call(get_current_date)
     Agent->>Tool: Execute get_current_date()
     Tool-->>Agent: "2026-03-29"
     Agent->>Model: Tool result as context
     Model-->>Agent: Final response (using tool output)
-    Agent-->>User: Executive Summary
+    Agent-->>Server: Executive Summary
+    Server-->>User: HTTP response
 ```
 
 ---
@@ -54,7 +57,7 @@ The scaffold created a `.env` file with placeholder values. You need to fill in 
 2. Replace the placeholder values with your actual Foundry project details:
 
    ```env
-   PROJECT_ENDPOINT=https://<your-account>.services.ai.azure.com/api/projects/<your-project>
+   AZURE_AI_PROJECT_ENDPOINT=https://<your-account>.services.ai.azure.com/api/projects/<your-project>
    MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
    ```
 
@@ -74,16 +77,19 @@ The scaffold created a `.env` file with placeholder values. You need to fill in 
 
 ### How environment variables flow
 
-The mapping chain is: `.env` → `main.py` (reads via `os.getenv`) → `agent.yaml` (maps to container env vars at deploy time).
+The mapping chain is: `.env` → `main.py` (reads via `os.environ`) → `agent.yaml` (maps to container env vars at deploy time).
 
-In `main.py`, the scaffold reads these values like this:
+In `main.py`, the scaffold reads these values directly:
 
 ```python
-PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("PROJECT_ENDPOINT")
-MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_AI_MODEL_DEPLOYMENT_NAME", os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini"))
+client = FoundryChatClient(
+    project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+    model=os.environ["MODEL_DEPLOYMENT_NAME"],
+    credential=DefaultAzureCredential(),
+)
 ```
 
-Both `AZURE_AI_PROJECT_ENDPOINT` and `PROJECT_ENDPOINT` are accepted (the `agent.yaml` uses the `AZURE_AI_*` prefix).
+`os.environ[...]` raises `KeyError` if the variable is missing - make sure both are set in `.env` before running.
 
 ---
 
@@ -174,20 +180,23 @@ The `@tool` decorator turns a standard Python function into an agent tool. The d
 
 ### 3.2 Register the tool with the agent
 
-When creating the agent via the `.as_agent()` context manager, pass the tool in the `tools` parameter:
+Pass the tool in the `tools` parameter when constructing the `Agent`:
 
 ```python
-async with AzureAIAgentClient(
-    project_endpoint=PROJECT_ENDPOINT,
-    model_deployment_name=MODEL_DEPLOYMENT_NAME,
-    credential=credential,
-).as_agent(
-    name="my-agent",
+client = FoundryChatClient(
+    project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+    model=os.environ["MODEL_DEPLOYMENT_NAME"],
+    credential=DefaultAzureCredential(),
+)
+
+agent = Agent(
+    client=client,
     instructions=AGENT_INSTRUCTIONS,
     tools=[get_current_date],
-) as agent:
-    server = from_agent_framework(agent)
-    await server.run_async()
+)
+
+server = ResponsesHostServer(agent)
+server.run()
 ```
 
 ### 3.3 How tool calls work
@@ -205,6 +214,8 @@ async with AzureAIAgentClient(
 ## Step 4: Create and activate a virtual environment
 
 Before installing dependencies, create an isolated Python environment.
+
+> ⚠️ **Warning (do not skip):** If you run the agent without an activated virtual environment and without installing `requirements.txt`, local run/debug will fail (missing imports such as `agent_framework` / `agent_framework_foundry_hosting`). Always complete **Step 4.2** and **Step 4.3** before moving to Module 5.
 
 ### 4.1 Create the virtual environment
 
@@ -250,25 +261,20 @@ This installs:
 
 | Package | Purpose |
 |---------|---------|
-| `agent-framework-azure-ai==1.0.0rc3` | Azure AI integration for the [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/overview/) |
-| `agent-framework-core==1.0.0rc3` | Core runtime for building agents (includes `python-dotenv`) |
-| `azure-ai-agentserver-agentframework==1.0.0b16` | Hosted agent server runtime for [Foundry Agent Service](https://learn.microsoft.com/azure/foundry/agents/overview) |
-| `azure-ai-agentserver-core==1.0.0b16` | Core agent server abstractions |
+| `agent-framework>=1.1.0` | [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/overview/agent-framework-overview) - `Agent`, `FoundryChatClient`, `@tool`, and core runtime |
+| `agent-framework-foundry-hosting` | Hosted agent server runtime - `ResponsesHostServer` that exposes the `/responses` endpoint for [Foundry Agent Service](https://learn.microsoft.com/azure/foundry/agents/overview) |
 | `debugpy` | Python debugging (enables F5 debugging in VS Code) |
-| `agent-dev-cli` | Local development CLI for testing agents |
 
 ### 4.4 Verify installation
 
 ```powershell
-pip list | Select-String "agent-framework|agentserver"
+pip list | Select-String "agent-framework"
 ```
 
 Expected output:
 ```
-agent-framework-azure-ai   1.0.0rc3
-agent-framework-core       1.0.0rc3
-azure-ai-agentserver-agentframework 1.0.0b16
-azure-ai-agentserver-core  1.0.0b16
+agent-framework                    1.1.x
+agent-framework-foundry-hosting    x.x.x
 ```
 
 ---
@@ -320,12 +326,14 @@ az account set --subscription "<your-subscription-id>"
 
 ### Checkpoint
 
-- [ ] `.env` file has valid `PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` (not placeholders)
+> ✅ **Final Note before testing:** Do not proceed to [Module 5](05-test-locally.md) until both are true in the same terminal/session: **(1)** `(.venv)` is visible in the prompt, and **(2)** `pip install -r requirements.txt` has completed successfully.
+
+- [ ] `.env` file has valid `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` (not placeholders)
 - [ ] Agent instructions are customized in `main.py` - they define role, audience, output format, rules, and safety constraints
 - [ ] (Optional) Custom tools are defined and registered
 - [ ] Virtual environment is created and activated (`(.venv)` visible in terminal prompt)
 - [ ] `pip install -r requirements.txt` completes successfully without errors
-- [ ] `pip list | Select-String "azure-ai-agentserver"` shows the package is installed
+- [ ] `pip list | Select-String "agent-framework"` shows `agent-framework` and `agent-framework-foundry-hosting` are installed
 - [ ] Authentication is valid - `az account show` returns your subscription OR you're signed into VS Code
 
 ---

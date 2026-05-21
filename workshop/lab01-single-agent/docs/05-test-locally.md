@@ -6,31 +6,25 @@ In this module, you run your [hosted agent](https://learn.microsoft.com/azure/fo
 
 ```mermaid
 flowchart TD
-    A["Press F5 / run task"] --> B["HTTP Server starts
-    on localhost:8088"]
-    B --> C["Agent Inspector opens
-    (visual chat UI)"]
-    C --> D["Send test prompt"]
-    D --> E{"Response correct?"}
-    E -->|Yes| F["Run remaining
-    smoke tests"]
-    E -->|No| G["Set breakpoint
-    in main.py"]
-    G --> H["Inspect variables
-    and step through"]
-    H --> D
-    F --> I["All tests pass -
+    A["Open agent/ in VS Code"] --> C1["F5
+    Debug Local Agent Server"]
+    C1 --> E["HTTP Server :8088
+    Agent Inspector opens"]
+    E --> F["Send test prompt"]
+    F --> G{"Response correct?"}
+    G -->|Yes| H["Run smoke tests
     Ready to deploy"]
+    G -->|No| I["Set breakpoint
+    Debug in main.py"]
+    I --> F
 
     style A fill:#4A90D9,color:#fff
-    style B fill:#7B68EE,color:#fff
-    style C fill:#7B68EE,color:#fff
-    style D fill:#E67E22,color:#fff
-    style E fill:#F39C12,color:#fff
-    style F fill:#27AE60,color:#fff
-    style G fill:#E74C3C,color:#fff
-    style H fill:#E74C3C,color:#fff
-    style I fill:#27AE60,color:#fff
+    style C1 fill:#7B68EE,color:#fff
+    style E fill:#7B68EE,color:#fff
+    style F fill:#E67E22,color:#fff
+    style G fill:#F39C12,color:#fff
+    style H fill:#27AE60,color:#fff
+    style I fill:#E74C3C,color:#fff
 ```
 
 ---
@@ -41,16 +35,19 @@ The scaffolded project includes a VS Code debug configuration (`launch.json`). T
 
 ### 1.1 Start the debugger
 
-1. Open your agent project in VS Code.
-2. Make sure the terminal is in the project directory and the virtual environment is activated (you should see `(.venv)` in the terminal prompt).
-3. Press **F5** to start debugging.
-   - **Alternative:** Open the **Run and Debug** panel (`Ctrl+Shift+D`) → click the dropdown at the top → select **"Lab01 - Single Agent"** (or **"Lab02 - Multi-Agent"** for Lab 2) → click the green **▶ Start Debugging** button.
+Open `agent/` directly in VS Code (`File → Open Folder`), then use:
 
-![VS Code Run and Debug panel showing the configuration dropdown with Lab01 - Single Agent and Lab02 - Multi-Agent options](images/05-run-debug-configuration.png)
+| Opened folder | Debug config to select | Tasks file used |
+|---|---|---|
+| `agent/` | **Debug Local Agent Server** | `agent/.vscode/tasks.json` |
+>
+> **Important (venv + tasks):** VS Code tasks run with the interpreter selected in VS Code (`${command:python.interpreterPath}`). After you install packages, select your project `.venv` interpreter (for example, `.venv\\Scripts\\python.exe` on Windows). If VS Code is set to a different interpreter, F5/tasks may fail with missing package errors.
 
-> **Which configuration?** The workspace provides two debug configurations in the dropdown. Pick the one that matches the lab you're working on:
-> - **Lab01 - Single Agent** - runs the executive summary agent from `workshop/lab01-single-agent/agent/`
-> - **Lab02 - Multi-Agent** - runs the resume-job-fit workflow from `workshop/lab02-multi-agent/PersonalCareerCopilot/`
+1. Open the **Run and Debug** panel (`Ctrl+Shift+D`).
+2. Click the dropdown at the top and select **Debug Local Agent Server**.
+3. Click the green **▶ Start Debugging** button, or press **F5**.
+
+> If you see a **prerequisite check warning** (`agent-framework` not found), you haven't installed dependencies yet. Activate your virtual environment and run `pip install -r requirements.txt`, then retry F5. See [Module 4, Step 4](04-configure-and-code.md#step-4-create-and-activate-a-virtual-environment) for details.
 
 ### 1.2 What happens when you press F5
 
@@ -111,13 +108,13 @@ If you prefer testing via terminal commands without the visual Inspector:
 
 ### 2.1 Start the agent server
 
-Open a terminal in VS Code and run:
+Open a terminal in VS Code, make sure the virtual environment is activated (`(.venv)` visible in the prompt), navigate to the `agent/` folder, and run:
 
 ```powershell
 python main.py
 ```
 
-The agent starts and listens on `http://localhost:8088/responses`. You'll see:
+The agent starts and listens on `http://localhost:8088/responses`. You'll see output similar to:
 
 ```
 Starting executive summary hosted agent

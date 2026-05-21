@@ -52,22 +52,24 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-PROJECT_ENDPOINT=https://<your-account>.services.ai.azure.com/api/projects/<your-project>
+AZURE_AI_PROJECT_ENDPOINT=https://<your-account>.services.ai.azure.com/api/projects/<your-project>
 MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
 ```
 
 | Value | Where to find it |
-|-------|-----------------|
-| `PROJECT_ENDPOINT` | Microsoft Foundry sidebar in VS Code → right-click your project → **Copy Project Endpoint** |
+|-------|------------------|
+| `AZURE_AI_PROJECT_ENDPOINT` | Microsoft Foundry sidebar in VS Code → right-click your project → **Copy Project Endpoint** |
 | `MODEL_DEPLOYMENT_NAME` | Foundry sidebar → expand project → **Models + endpoints** → deployment name |
 
 ### 3. Run locally
 
 ```powershell
-python -m debugpy --listen 127.0.0.1:5679 -m agentdev run main.py --verbose --port 8088
+python -m debugpy --listen 127.0.0.1:5679 main.py --port 8088
 ```
 
-Or use the VS Code task: `Ctrl+Shift+P` → **Tasks: Run Task** → **Run Lab02 HTTP Server**.
+Or use the VS Code task: `Ctrl+Shift+P` → **Tasks: Run Task** → **Run Agent/Workflow HTTP Server**.
+
+For F5 debugging, use **Debug Local Agent Server**.
 
 ### 4. Test with Agent Inspector
 
@@ -117,28 +119,26 @@ PersonalCareerCopilot/
 
 Defines the hosted agent for Foundry Agent Service:
 - `kind: hosted` - runs as a managed container
-- `protocols: [responses v1]` - exposes the `/responses` HTTP endpoint
-- `environment_variables` - `PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` are injected at deploy time
+- `protocols` - `responses` protocol with `version: 1.0.0`, exposing the `/responses` HTTP endpoint
+- `environment_variables` - `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` are injected at deploy time
 
 ### `main.py`
 
 Contains:
 - **Agent instructions** - four `*_INSTRUCTIONS` constants, one per agent
 - **MCP tool** - `search_microsoft_learn_for_plan()` calls `https://learn.microsoft.com/api/mcp` via Streamable HTTP
-- **Agent creation** - `create_agents()` context manager using `AzureAIAgentClient.as_agent()`
-- **Workflow graph** - `create_workflow()` uses `WorkflowBuilder` to wire agents with fan-out/fan-in/sequential patterns
-- **Server startup** - `from_agent_framework(agent).run_async()` on port 8088
+- **Agent creation** - four `Agent()` + `AgentExecutor()` instances sharing one `FoundryChatClient`
+- **Workflow graph** - `WorkflowBuilder` wires agents with fan-out/fan-in and sequential patterns
+- **Server startup** - `ResponsesHostServer` runs on port 8088
 
 ### `requirements.txt`
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `agent-framework-azure-ai` | `1.0.0rc3` | Azure AI integration for Microsoft Agent Framework |
-| `agent-framework-core` | `1.0.0rc3` | Core runtime (includes WorkflowBuilder) |
-| `azure-ai-agentserver-agentframework` | `1.0.0b16` | Hosted agent server runtime |
-| `azure-ai-agentserver-core` | `1.0.0b16` | Core agent server abstractions |
+| `agent-framework` | `>=1.1.0` | Core runtime: `Agent`, `AgentExecutor`, `WorkflowBuilder`, `@tool` |
+| `agent-framework-foundry-hosting` | latest | `ResponsesHostServer` + Foundry hosting integration |
 | `debugpy` | latest | Python debugging (F5 in VS Code) |
-| `agent-dev-cli` | `--pre` | Local dev CLI + Agent Inspector backend |
+| `mcp` | latest | MCP client for GapAnalyzer (`mcp.client.streamable_http`) |
 
 ---
 
@@ -146,7 +146,7 @@ Contains:
 
 | Issue | Fix |
 |-------|-----|
-| `RuntimeError: Missing required environment variable(s)` | Create `.env` with `PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` |
+| `KeyError: 'AZURE_AI_PROJECT_ENDPOINT'` | Create `.env` with `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` |
 | `ModuleNotFoundError: No module named 'agent_framework'` | Activate venv and run `pip install -r requirements.txt` |
 | No Microsoft Learn URLs in output | Check internet connectivity to `https://learn.microsoft.com/api/mcp` |
 | Only 1 gap card (truncated) | Verify `GAP_ANALYZER_INSTRUCTIONS` includes the `CRITICAL:` block |

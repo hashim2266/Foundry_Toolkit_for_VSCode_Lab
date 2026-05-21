@@ -8,7 +8,7 @@ In this module, you create (or select) a Microsoft Foundry project and deploy a 
 
 ## Step 1: Create a Foundry project from VS Code
 
-You'll use the Microsoft Foundry extension to create a project without leaving VS Code.
+You'll use Foundry Toolkit (Microsoft Foundry commands in VS Code) to create a project without leaving VS Code.
 
 1. Press `Ctrl+Shift+P` to open the **Command Palette**.
 2. Type: **Microsoft Foundry: Create Project** and select it.

@@ -74,30 +74,64 @@ The deployment wizard walks you through configuration. Fill in each prompt:
 1. A dropdown shows your Foundry projects.
 2. Select the project you created in Module 2 (e.g., `workshop-agents`).
 
-### 2.2 Select the container agent file
+### 2.2 Select container registry (ACR)
 
-1. You'll be asked to select the agent entry point.
-2. Choose **`main.py`** (Python) - this is the file the wizard uses to identify your agent project.
+The wizard asks how to manage the container registry for this deployment:
 
-### 2.3 Configure resources
+| Option | When to use |
+|--------|------------|
+| **Default ACR** ← *(recommended for workshop)* | Let Microsoft Foundry create and manage an ACR for you automatically |
+| Enter a custom ACR | You have an existing ACR you want to use |
+| Use your own existing Azure Container Registry | You already have a specific ACR you want to target |
 
-| Setting | Recommended value | Notes |
-|---------|------------------|-------|
-| **CPU** | `0.25` | Default, sufficient for workshop. Increase for production workloads |
-| **Memory** | `0.5Gi` | Default, sufficient for workshop |
+1. Select **Default ACR** (Microsoft Foundry creates and manages an ACR for you).
+2. Press **Enter** or click to confirm.
 
-These match the values in `agent.yaml`. You can accept the defaults.
+![Container Registry selection showing Default ACR highlighted - Microsoft Foundry creates and manages an ACR for you](images/06-deploy-acr-selection.png)
+
+### 2.3 Configure CPU and memory resources
+
+The wizard shows the available container resource presets:
+
+| Option | CPU | Memory | Use when |
+|--------|-----|--------|----------|
+| **0.25 CPU cores, 0.5 Gi memory** ← *(select this)* | 0.25 | 0.5 Gi | Workshop / light workloads |
+| 0.5 CPU cores, 1.0 Gi memory | 0.5 | 1.0 Gi | Moderate traffic |
+| 1.0 CPU cores, 2.0 Gi memory | 1.0 | 2.0 Gi | Production workloads |
+| 2.0 CPU cores, 4.0 Gi memory | 2.0 | 4.0 Gi | High throughput / large models |
+
+1. Select **0.25 CPU cores, 0.5 Gi memory** (the default for this workshop).
+2. Press **Enter** or click to confirm.
+
+![CPU and memory configuration picker with 0.25 CPU cores 0.5 Gi memory highlighted](images/06-deploy-cpu-memory.png)
 
 ---
 
 ## Step 3: Confirm and deploy
 
-1. The wizard shows a deployment summary with:
-   - Target project name
-   - Agent name (from `agent.yaml`)
-   - Container file and resources
-2. Review the summary and click **Confirm and Deploy** (or **Deploy**).
-3. Watch the progress in VS Code.
+1. Review the configuration summary and click **Confirm and Deploy** (or **Deploy**) to start.
+2. Watch the **Output** panel in VS Code (select **Microsoft Foundry** from the dropdown) for live build and push logs.
+3. When deployment finishes, a notification appears in the bottom-right corner:
+
+   > **my-agent is deployed successfully.** &nbsp; `View logs` &nbsp; `Run agent`
+
+   Click **Run agent** to open the **Agent Playground** directly, or **View logs** to inspect the deployment log.
+
+4. The **Agent Playground** tab opens automatically showing:
+   - **Agent details** (name, agent ID, protocol, endpoint URL)
+   - **Deployment details** (status, CPU, memory, created date)
+
+   The possible status values are:
+
+   | Status | Meaning |
+   |--------|---------|
+   | **Running** | Container is running and the agent is ready |
+   | **Pending** | Container is starting up - wait 30–60 seconds |
+   | **Failed** | Container failed to start - check logs (see troubleshooting below) |
+
+   > **If you see "Pending" for more than 2 minutes:** The container may still be pulling the base image. Wait a bit longer. If it stays pending, open the Output panel and check the deployment log.
+
+![VS Code showing deployment complete notification, Agent Playground tab open with my-agent Running status, and Output panel showing successful build and push logs](images/06-deploy-success.png)
 
 ### What happens during deployment (step by step)
 
@@ -118,30 +152,6 @@ The deployment is a multi-step process. Watch the VS Code **Output** panel (sele
 4. **Container start** - The container starts in Foundry's managed infrastructure. The platform assigns a [system-managed identity](https://learn.microsoft.com/azure/foundry/agents/concepts/agent-identity) and exposes the `/responses` endpoint.
 
 > **First deployment is slower** (Docker needs to push all layers). Subsequent deployments are faster because Docker caches unchanged layers.
-
----
-
-## Step 4: Verify the deployment status
-
-After the deployment command completes:
-
-1. Open the **Microsoft Foundry** sidebar by clicking the Foundry icon in the Activity Bar.
-2. Expand the **Hosted Agents (Preview)** section under your project.
-3. You should see your agent name (e.g., `ExecutiveAgent` or the name from `agent.yaml`).
-4. **Click on the agent name** to expand it.
-5. You'll see one or more **versions** (e.g., `v1`).
-6. Click on the version to see **Container Details**.
-7. Check the **Status** field:
-
-   | Status | Meaning |
-   |--------|---------|
-   | **Started** or **Running** | The container is running and the agent is ready |
-   | **Pending** | Container is starting up (wait 30-60 seconds) |
-   | **Failed** | Container failed to start (check logs - see troubleshooting below) |
-
-![Microsoft Foundry portal Agents page showing ExecutiveAgent listed as a hosted agent with version 2](images/06-foundry-portal-agent-list.png)
-
-> **If you see "Pending" for more than 2 minutes:** The container may be pulling the base image. Wait a bit longer. If it stays pending, check the container logs.
 
 ---
 

@@ -1,31 +1,6 @@
 # Module 5 - Test Locally (Multi-Agent)
 
-In this module, you run the multi-agent workflow locally, test it with Agent Inspector, and verify that all four agents and the MCP tool work correctly before deploying to Foundry.
-
-### What happens during a local test run
-
-```mermaid
-sequenceDiagram
-    participant You as You (Agent Inspector)
-    participant Server as HTTP Server (:8088)
-    participant RP as Resume Parser
-    participant JD as JD Agent
-    participant MA as Matching Agent
-    participant GA as Gap Analyzer
-    participant MCP as Microsoft Learn MCP
-
-    You->>Server: POST /responses (resume + JD)
-    Server->>RP: Forward user input
-    Server->>JD: Forward user input (parallel)
-    RP-->>MA: Structured profile
-    JD-->>MA: Structured requirements
-    Note over MA: Waits for both inputs
-    MA-->>GA: Fit score + gaps
-    GA->>MCP: search_microsoft_learn_for_plan(skill)
-    MCP-->>GA: Learn URLs
-    GA-->>Server: Gap cards + roadmap
-    Server-->>You: Final response
-```
+In this module, you run the multi-agent workflow locally, test it with Agent Inspector, and verify all four agents and the MCP tool work correctly before deploying.
 
 ---
 
@@ -33,9 +8,10 @@ sequenceDiagram
 
 ### Option A: Using the VS Code task (recommended)
 
-1. Press `Ctrl+Shift+P` → type **Tasks: Run Task** → select **Run Lab02 HTTP Server**.
-2. The task starts the server with debugpy attached on port `5679` and the agent on port `8088`.
-3. Wait for the output to show:
+1. Open `workshop/lab02-multi-agent/PersonalCareerCopilot/` as your VS Code folder.
+2. Press `Ctrl+Shift+P` → type **Tasks: Run Task** → select **Run Agent/Workflow HTTP Server**.
+3. The task starts the server with debugpy attached on port `5679` and the agent on port `8088`.
+4. Wait for the output to show:
 
 ```
 INFO:resume-job-fit:Starting Resume -> Job Fit Evaluator HTTP server...
@@ -63,13 +39,13 @@ source .venv/bin/activate
 Start the server:
 
 ```powershell
-python -m debugpy --listen 127.0.0.1:5679 -m agentdev run main.py --verbose --port 8088
+python -m debugpy --listen 127.0.0.1:5679 main.py --port 8088
 ```
 
 ### Option C: Using F5 (debug mode)
 
 1. Press `F5` or go to **Run and Debug** (`Ctrl+Shift+D`).
-2. Select the **Lab02 - Multi-Agent** launch configuration from the dropdown.
+2. Select **Debug Local Agent Server** from the dropdown.
 3. The server starts with full breakpoint support.
 
 > **Tip:** Debug mode lets you set breakpoints inside `search_microsoft_learn_for_plan()` to inspect MCP responses, or inside agent instruction strings to see what each agent receives.
@@ -79,7 +55,7 @@ python -m debugpy --listen 127.0.0.1:5679 -m agentdev run main.py --verbose --po
 ## Step 2: Open Agent Inspector
 
 1. Press `Ctrl+Shift+P` → type **Foundry Toolkit: Open Agent Inspector**.
-2. Agent Inspector opens in a browser tab at `http://localhost:5679`.
+2. Agent Inspector opens as a VS Code panel connected to `http://localhost:8088`.
 3. You should see the agent interface ready to accept messages.
 
 > **If Agent Inspector doesn't open:** Ensure the server is fully started (you see the "Server running" log). If port 5679 is busy, see [Module 8 - Troubleshooting](08-troubleshooting.md).

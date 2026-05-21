@@ -1,52 +1,23 @@
-"""
-Resume → Job Fit Evaluator: Multi-Agent Workflow
-Uses Microsoft Agent Framework (1.0.0rc3) with Microsoft Foundry.
+# Copyright (c) Microsoft. All rights reserved.
 
-Agents:
-  1. Resume Parser Agent - extracts structured skills/experience from a resume
-  2. Job Description Agent - extracts structured requirements from a JD
-  3. Matching Agent - computes a fit score and lists missing skills
-  4. Gap Analyzer Agent - generates a personalized learning roadmap
-
-SDK pattern: AzureAIAgentClient.as_agent() context-manager (Foundry Agent Service v1)
-Hosting: azure-ai-agentserver-agentframework adapter
-Ready for deployment to Foundry Hosted Agent service.
-"""
-
-import asyncio
 import json
-import logging
 import os
-from contextlib import asynccontextmanager
 
-from agent_framework import WorkflowBuilder, tool
-from agent_framework.azure import AzureAIAgentClient
-from azure.identity.aio import DefaultAzureCredential, ManagedIdentityCredential
+from agent_framework import Agent, AgentExecutor, WorkflowBuilder, tool
+from agent_framework.foundry import FoundryChatClient
+from agent_framework_foundry_hosting import ResponsesHostServer
+from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 from mcp.client.session import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-# override=False so Foundry runtime env vars take precedence over .env
-load_dotenv(override=False)
+load_dotenv(override=True)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("resume-job-fit")
-
-# Support both standard Foundry env var names and workshop-specific names
-PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv(
-    "PROJECT_ENDPOINT"
-)
-MODEL_DEPLOYMENT_NAME = os.getenv(
-    "AZURE_AI_MODEL_DEPLOYMENT_NAME",
-    os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini"),
-)
+PROJECT_ENDPOINT = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+MODEL_DEPLOYMENT_NAME = os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini")
 MICROSOFT_LEARN_MCP_ENDPOINT = os.getenv(
     "MICROSOFT_LEARN_MCP_ENDPOINT", "https://learn.microsoft.com/api/mcp"
 )
-
-# ---------------------------------------------------------------------------
-# Agent instructions
-# ---------------------------------------------------------------------------
 
 RESUME_PARSER_INSTRUCTIONS = """\
 You are the Resume Parser.
@@ -171,21 +142,16 @@ async def search_microsoft_learn_for_plan(
                 )
 
         if not result.content:
-            return (
-                "No results returned from Microsoft Learn MCP. "
-                "Fallback: https://learn.microsoft.com/training/support/catalog-api"
-            )
+            return "No results returned. Fallback: https://learn.microsoft.com/training/support/catalog-api"
 
         payload_text = getattr(result.content[0], "text", "")
         data = json.loads(payload_text) if payload_text else {}
-        items = data.get("results", [])[: max(1, min(max_results, 10))]
+        items = data.get("results", [])[:max(1, min(max_results, 10))]
 
         if not items:
             return (
-                f"No direct Microsoft Learn results found for '{skill}'. "
-                "Use Learn Catalog API quickstart: "
-                "https://learn.microsoft.com/training/support/"
-                "integrations-learn-platform-api-catalog-quickstart"
+                f"No Microsoft Learn results for '{skill}'. "
+                "https://learn.microsoft.com/training/support/integrations-learn-platform-api-catalog-quickstart"
             )
 
         lines = [f"Microsoft Learn resources for '{skill}':"]
@@ -195,136 +161,47 @@ async def search_microsoft_learn_for_plan(
             lines.append(f"{i}. {title} - {url}".rstrip(" -"))
         return "\n".join(lines)
     except Exception as ex:
-        return (
-            "Microsoft Learn MCP lookup unavailable. "
-            f"Reason: {ex}. "
-            "Fallbacks: https://learn.microsoft.com/api/mcp and "
-            "https://learn.microsoft.com/training/support/catalog-api"
-        )
+        return f"Microsoft Learn MCP unavailable ({ex}). See: https://learn.microsoft.com/api/mcp"
 
 
-def get_credential():
-    """Use Managed Identity in Azure, otherwise DefaultAzureCredential locally."""
-    return (
-        ManagedIdentityCredential()
-        if os.getenv("MSI_ENDPOINT")
-        else DefaultAzureCredential()
+def main():
+    client = FoundryChatClient(
+        project_endpoint=PROJECT_ENDPOINT,
+        model=MODEL_DEPLOYMENT_NAME,
+        credential=DefaultAzureCredential(),
     )
 
+    resume_parser = Agent(client=client, instructions=RESUME_PARSER_INSTRUCTIONS, name="ResumeParser")
+    jd_agent = Agent(client=client, instructions=JOB_DESCRIPTION_INSTRUCTIONS, name="JobDescriptionAgent")
+    matching_agent = Agent(client=client, instructions=MATCHING_AGENT_INSTRUCTIONS, name="MatchingAgent")
+    gap_analyzer = Agent(
+        client=client,
+        instructions=GAP_ANALYZER_INSTRUCTIONS,
+        name="GapAnalyzer",
+        tools=[search_microsoft_learn_for_plan],
+    )
 
-@asynccontextmanager
-async def create_agents():
-    """Create the four agents using the .as_agent() context-manager pattern.
+    resume_executor = AgentExecutor(resume_parser, context_mode="last_agent")
+    jd_executor = AgentExecutor(jd_agent, context_mode="last_agent")
+    matching_executor = AgentExecutor(matching_agent, context_mode="last_agent")
+    gap_executor = AgentExecutor(gap_analyzer, context_mode="last_agent")
 
-    Each agent gets its own AzureAIAgentClient instance (required by the SDK
-    since agent name is scoped to the client).
-    """
-    async with (
-        get_credential() as credential,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="ResumeParser",
-            instructions=RESUME_PARSER_INSTRUCTIONS,
-        ) as resume_parser,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="JobDescriptionAgent",
-            instructions=JOB_DESCRIPTION_INSTRUCTIONS,
-        ) as jd_agent,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="MatchingAgent",
-            instructions=MATCHING_AGENT_INSTRUCTIONS,
-        ) as matching_agent,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="GapAnalyzer",
-            instructions=GAP_ANALYZER_INSTRUCTIONS,
-            tools=[search_microsoft_learn_for_plan],
-        ) as gap_analyzer,
-    ):
-        yield resume_parser, jd_agent, matching_agent, gap_analyzer
-
-
-def create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer):
-    """
-    Build the multi-agent workflow graph:
-
-        User Input
-           │
-      ┌────┴────┐
-      ▼         ▼
-    Resume    Job Description
-    Parser      Agent
-      └────┬────┘
-           ▼
-       Matching Agent
-           │
-           ▼
-       Gap Analyzer
-           │
-           ▼
-        Output
-    """
-    workflow = (
+    workflow_agent = (
         WorkflowBuilder(
-            name="ResumeJobFitEvaluator",
-            start_executor=resume_parser,
-            output_executors=[gap_analyzer],
+            start_executor=resume_executor,
+            output_executors=[gap_executor],
         )
-        .add_edge(resume_parser, jd_agent)
-        .add_edge(resume_parser, matching_agent)
-        .add_edge(jd_agent, matching_agent)
-        .add_edge(matching_agent, gap_analyzer)
+        .add_edge(resume_executor, jd_executor)
+        .add_edge(resume_executor, matching_executor)
+        .add_edge(jd_executor, matching_executor)
+        .add_edge(matching_executor, gap_executor)
         .build()
+        .as_agent()
     )
-    return workflow.as_agent()
 
-
-def validate_configuration() -> None:
-    """Validate required runtime configuration before starting."""
-    missing = []
-    if not PROJECT_ENDPOINT:
-        missing.append("AZURE_AI_PROJECT_ENDPOINT or PROJECT_ENDPOINT")
-    if not MODEL_DEPLOYMENT_NAME:
-        missing.append("AZURE_AI_MODEL_DEPLOYMENT_NAME or MODEL_DEPLOYMENT_NAME")
-    if missing:
-        raise RuntimeError(
-            f"Missing required environment variable(s): {', '.join(missing)}. "
-            "Set them in the workspace .env file or your shell before starting the agent."
-        )
-
-
-async def main() -> None:
-    """
-    Resume → Job Fit Evaluator multi-agent workflow.
-
-    Usage:
-        python main.py          # Server mode (port 8088)
-    """
-    validate_configuration()
-
-    async with create_agents() as (resume_parser, jd_agent, matching_agent, gap_analyzer):
-        agent = create_workflow(resume_parser, jd_agent, matching_agent, gap_analyzer)
-
-        logger.info("Starting Resume → Job Fit Evaluator HTTP server...")
-        from azure.ai.agentserver.agentframework import from_agent_framework
-
-        logger.info("Server running on http://localhost:8088")
-        await from_agent_framework(agent).run_async()
+    server = ResponsesHostServer(workflow_agent)
+    server.run()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

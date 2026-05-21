@@ -1,80 +1,39 @@
 # Module 7 - Verify in Playground
 
-In this module, you test your deployed multi-agent workflow in both **VS Code** and the **[Foundry Portal](https://ai.azure.com)**, confirming the agent behaves identically to local testing.
+In this module, you test your deployed multi-agent workflow in VS Code and the Foundry Portal, confirming the agent behaves the same as local testing.
 
 ---
 
-## Why verify after deployment?
+## Why test again after deploying?
 
-Your multi-agent workflow ran perfectly locally, so why test again? The hosted environment differs in several ways:
+The hosted environment differs from local in a few important ways:
 
-```mermaid
-flowchart TD
-    subgraph Local["Local Environment"]
-        L1["DefaultAzureCredential
-        (your personal sign-in)"]
-        L2["localhost:8088/responses"]
-        L3["Local Internet
-        → Azure OpenAI + MCP"]
-    end
+| | Local | Hosted |
+|--|-------|--------|
+| **Identity** | Your personal sign-in (`DefaultAzureCredential`) | Auto-provisioned `ManagedIdentityCredential` |
+| **Endpoint** | `http://localhost:8088/responses` | Foundry Agent Service managed URL |
+| **Network** | Your internet → Azure OpenAI + MCP | Azure backbone (lower latency) |
 
-    subgraph Hosted["Hosted Environment"]
-        H1["ManagedIdentityCredential
-        (auto-provisioned)"]
-        H2["Foundry Agent Service
-        (managed URL)"]
-        H3["Azure Backbone
-        (lower latency)"]
-    end
-
-    Deploy["Deploy to Foundry"]
-
-    Local --> Deploy --> Hosted
-
-    style Local fill:#3498DB15,stroke:#3498DB
-    style Hosted fill:#27AE6015,stroke:#27AE60
-    style Deploy fill:#E67E22,stroke:#2C3E50,color:#fff
-    style L1 fill:#3498DB,stroke:#2C3E50,color:#fff
-    style L2 fill:#3498DB,stroke:#2C3E50,color:#fff
-    style L3 fill:#3498DB,stroke:#2C3E50,color:#fff
-    style H1 fill:#27AE60,stroke:#2C3E50,color:#fff
-    style H2 fill:#27AE60,stroke:#2C3E50,color:#fff
-    style H3 fill:#27AE60,stroke:#2C3E50,color:#fff
-```
-
-| Difference | Local | Hosted |
-|-----------|-------|--------|
-| **Identity** | [`DefaultAzureCredential`](https://learn.microsoft.com/azure/developer/python/sdk/authentication/credential-chains#defaultazurecredential-overview) (your personal sign-in) | [`ManagedIdentityCredential`](https://learn.microsoft.com/python/api/overview/azure/identity-readme#managed-identity-support) (auto-provisioned) |
-| **Endpoint** | `http://localhost:8088/responses` | [Foundry Agent Service](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) endpoint (managed URL) |
-| **Network** | Local machine → Azure OpenAI + MCP outbound | Azure backbone (lower latency between services) |
-| **MCP connectivity** | Local internet → `learn.microsoft.com/api/mcp` | Container outbound → `learn.microsoft.com/api/mcp` |
-
-If any environment variable is misconfigured, RBAC differs, or MCP outbound is blocked, you'll catch it here.
+A misconfigured env var, RBAC issue, or blocked MCP outbound call would show up here first.
 
 ---
 
 ## Option A: Test in VS Code Playground (recommended first)
 
-The [Foundry extension](https://marketplace.visualstudio.com/items?itemName=TeamsDevApp.vscode-ai-foundry) includes an integrated Playground that lets you chat with your deployed agent without leaving VS Code.
-
 ### Step 1: Navigate to your hosted agent
 
-1. Click the **Microsoft Foundry** icon in the VS Code **Activity Bar** (left sidebar) to open the Foundry panel.
-2. Expand your connected project (e.g., `workshop-agents`).
-3. Expand **Hosted Agents (Preview)**.
-4. You should see your agent name (e.g., `resume-job-fit-evaluator`).
+1. Click the **Microsoft Foundry** icon in the Activity Bar.
+2. Expand your project → **Hosted Agents (Preview)** → find your agent.
 
 ### Step 2: Select a version
 
-1. Click on the agent name to expand its versions.
-2. Click on the version you deployed (e.g., `v1`).
-3. A **detail panel** opens showing Container Details.
-4. Verify the status is **Started** or **Running**.
+1. Click on the agent to expand its versions.
+2. Click `v1` → verify status is **Started** or **Running**.
 
 ### Step 3: Open the Playground
 
-1. In the detail panel, click the **Playground** button (or right-click the version → **Open in Playground**).
-2. A chat interface opens in a VS Code tab.
+1. Click **Playground** (or right-click version → **Open in Playground**).
+2. A chat window opens in a VS Code tab.
 
 ### Step 4: Run your smoke tests
 

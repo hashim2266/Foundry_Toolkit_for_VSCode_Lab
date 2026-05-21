@@ -16,6 +16,7 @@
 
 # Mono auto generated files
 mono_crash.*
+*checkpoint*
 
 # Build results
 [Dd]ebug/
@@ -110,6 +111,8 @@ StyleCopReport.xml
 *.vssscc
 .builds
 *.pidb
+*venv*
+*pycache*
 *.svclog
 *.scc
 

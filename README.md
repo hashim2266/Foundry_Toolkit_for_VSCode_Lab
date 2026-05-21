@@ -1,8 +1,8 @@
 # Foundry Toolkit + Foundry Hosted Agents Workshop
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Microsoft Agent Framework](https://img.shields.io/badge/Microsoft%20Agent%20Framework-v1.0.0rc3-5E5ADB?logo=microsoft&logoColor=white)](https://github.com/microsoft/agents)
-[![Hosted Agents](https://img.shields.io/badge/Hosted%20Agents-Enabled-5E5ADB?logo=microsoft&logoColor=white)](https://learn.microsoft.com/azure/ai-foundry/agents/concepts/hosted-agents/)
+[![Microsoft Agent Framework](https://img.shields.io/badge/Microsoft%20Agent%20Framework-v1.1.0%2B-5E5ADB?logo=microsoft&logoColor=white)](https://github.com/microsoft/agents)
+[![Hosted Agents](https://img.shields.io/badge/Hosted%20Agents-Enabled-5E5ADB?logo=microsoft&logoColor=white)](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents)
 [![Microsoft Foundry](https://img.shields.io/badge/Microsoft%20Foundry-Agent%20Service-0078D4?logo=microsoft&logoColor=white)](https://ai.azure.com/)
 [![Azure OpenAI](https://img.shields.io/badge/Azure%20OpenAI-GPT--4.1-0078D4?logo=microsoftazure&logoColor=white)](https://learn.microsoft.com/azure/ai-services/openai/)
 [![Azure CLI](https://img.shields.io/badge/Azure%20CLI-Required-0078D4?logo=microsoftazure&logoColor=white)](https://learn.microsoft.com/cli/azure/install-azure-cli)
@@ -138,11 +138,6 @@ It is a dead-simple, single-purpose agent - perfect for learning the hosted agen
 ```
 📂 Foundry_Toolkit_for_VSCode_Lab/
 ├── 📄 README.md                      ← You are here
-├── 📂 ExecutiveAgent/                ← Standalone hosted agent project
-│   ├── agent.yaml
-│   ├── Dockerfile
-│   ├── main.py
-│   └── requirements.txt
 └── 📂 workshop/
     ├── 📂 lab01-single-agent/        ← Full lab: docs + agent code
     │   ├── README.md                 ← Hands-on lab instructions

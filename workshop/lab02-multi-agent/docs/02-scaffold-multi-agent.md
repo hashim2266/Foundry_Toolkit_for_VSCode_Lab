@@ -1,8 +1,8 @@
 # Module 2 - Scaffold the Multi-Agent Project
 
-In this module, you use the [Microsoft Foundry extension](https://marketplace.visualstudio.com/items?itemName=TeamsDevApp.vscode-ai-foundry) to **scaffold a multi-agent workflow project**. The extension generates the entire project structure - `agent.yaml`, `main.py`, `Dockerfile`, `requirements.txt`, `.env`, and debug configuration. You then customize these files in Modules 3 and 4.
+In this module, you use the [Microsoft Foundry extension](https://marketplace.visualstudio.com/items?itemName=TeamsDevApp.vscode-ai-foundry) to scaffold a base project. The wizard generates `agent.yaml`, `main.py`, `Dockerfile`, `requirements.txt`, `.env`, and debug configuration. You customize these in Modules 3 and 4.
 
-> **Note:** The `PersonalCareerCopilot/` folder in this lab is a complete, working example of a customized multi-agent project. You can either scaffold a fresh project (recommended for learning) or study the existing code directly.
+> **Reference implementation:** [`PersonalCareerCopilot/`](../PersonalCareerCopilot/) is a complete working example. Use it to compare your work as you go.
 
 ---
 
@@ -10,27 +10,23 @@ In this module, you use the [Microsoft Foundry extension](https://marketplace.vi
 
 ```mermaid
 flowchart LR
-    S1["Open Wizard
-    Ctrl+Shift+P"]
-    S2["Select Template
-    Multi-Agent Workflow"]
-    S3["Language
-    Python"]
-    S4["Model
-    gpt-4.1-mini"]
-    S5["Folder & Name
-    resume-job-fit-evaluator"]
-    S6["Scaffold
-    Files Generated"]
+    S1["Open Wizard"]
+    S2["Choose Language: Python"]
+    S3["Select API Type: Responses API"]
+    S4["Select Template: Basic Agent Framework"]
+    S5["Select Model"]
+    S6["Workspace and Folder Name"]
+    S7["Scaffold"]
 
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
 
     style S1 fill:#3498DB,stroke:#2C3E50,color:#fff
-    style S2 fill:#7B68EE,stroke:#2C3E50,color:#fff
-    style S3 fill:#9B59B6,stroke:#2C3E50,color:#fff
-    style S4 fill:#E67E22,stroke:#2C3E50,color:#fff
+    style S2 fill:#9B59B6,stroke:#2C3E50,color:#fff
+    style S3 fill:#E67E22,stroke:#2C3E50,color:#fff
+    style S4 fill:#E74C3C,stroke:#2C3E50,color:#fff
     style S5 fill:#F39C12,stroke:#2C3E50,color:#fff
-    style S6 fill:#27AE60,stroke:#2C3E50,color:#fff
+    style S6 fill:#E74C3C,stroke:#2C3E50,color:#fff
+    style S7 fill:#27AE60,stroke:#2C3E50,color:#fff
 ```
 
 1. Press `Ctrl+Shift+P` to open the **Command Palette**.
@@ -41,50 +37,54 @@ flowchart LR
 
 ---
 
-## Step 2: Choose the Multi-Agent Workflow template
-
-The wizard asks you to select a template:
-
-| Template | Description | When to use |
-|----------|-------------|-------------|
-| Single Agent | One agent with instructions and optional tools | Lab 01 |
-| **Multi-Agent Workflow** | Multiple agents that collaborate via WorkflowBuilder | **This lab (Lab 02)** |
-
-1. Select **Multi-Agent Workflow**.
-2. Click **Next**.
-
-![Wizard template selection showing Multi-Agent Workflow option highlighted](images/02-wizard-template-selection.png)
-
----
-
-## Step 3: Choose programming language
+## Step 2: Choose programming language
 
 1. Select **Python**.
 2. Click **Next**.
 
 ---
 
-## Step 4: Select your model
+## Step 3: Select API type
+
+| API type | Endpoint | Use when |
+|----------|----------|----------|
+| **Responses API** ✅ *(this workshop)* | `POST /responses` | Conversational chatbots, streaming, multi-turn with platform-managed history |
+| Invocation API | `POST /invocations` | Webhooks, non-conversational processing, custom async workflows |
+
+1. Select **Responses API**.
+2. Click **Next**.
+
+---
+
+## Step 4: Select template
+
+> ⚠️ **No dedicated multi-agent template exists in v1.2.1.** Select **Basic - Agent Framework** — you add multi-agent code in Module 3. See [KI-002](../../../KNOWN_ISSUES.md#ki-002---no-dedicated-multi-agent-template-in-foundry-toolkit-v121).
+
+1. Select **Basic - Agent Framework**.
+2. Click **Next**.
+
+---
+
+## Step 5: Select your model
 
 1. The wizard shows models deployed in your Foundry project.
-2. Select the same model you used in Lab 01 (e.g., **gpt-4.1-mini**).
+2. Select the same model you used in Lab 01 (e.g., **gpt-4.1-nano** or **gpt-4.1-mini**).
 3. Click **Next**.
 
 > **Tip:** [`gpt-4.1-mini`](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure#gpt-41-series) is recommended for development - it's fast, cheap, and handles multi-agent workflows well. Switch to `gpt-4.1` for final production deployment if you want higher-quality output.
 
 ---
 
-## Step 5: Choose folder location and agent name
+## Step 6: Choose workspace folder and folder name
 
-1. A file dialog opens. Choose a target folder:
+1. A file picker opens for **Workspace Folder**. Browse to your target folder:
    - If following along with the workshop repo: navigate to `workshop/lab02-multi-agent/` and create a new subfolder
    - If starting fresh: choose any folder
-2. Enter a **name** for the hosted agent (e.g., `resume-job-fit-evaluator`).
-3. Click **Create**.
+2. Enter a **Folder Name** for the agent project (e.g., `resume-job-fit-evaluator`). Press **Enter** to confirm.
 
 ---
 
-## Step 6: Wait for scaffolding to complete
+## Step 7: Wait for scaffolding to complete
 
 1. VS Code opens a new window (or the current window updates) with the scaffolded project.
 2. You should see this file structure:
@@ -96,98 +96,88 @@ resume-job-fit-evaluator/
 │   └── launch.json     ← Debug configuration
 ├── agent.yaml          ← Agent definition (kind: hosted)
 ├── Dockerfile          ← Container configuration
-├── main.py             ← Multi-agent workflow code (scaffold)
+├── main.py             ← Stub agent code (one executor, no WorkflowBuilder)
 └── requirements.txt    ← Python dependencies
 ```
 
-> **Workshop note:** In the workshop repository, the `.vscode/` folder is at the **workspace root** with shared `launch.json` and `tasks.json`. The debug configurations for Lab 01 and Lab 02 are both included. When you press F5, select **"Lab02 - Multi-Agent"** from the dropdown.
+Open this folder directly in VS Code so the local `.vscode/launch.json` and `.vscode/tasks.json` apply.
 
 ---
 
-## Step 7: Understand the scaffolded files (multi-agent specifics)
+## Step 8: What the scaffold actually generates
 
-The multi-agent scaffold differs from the single-agent scaffold in several key ways:
+The wizard creates the **same single-agent stub as Lab 01**. You replace it with the 4-agent workflow in Module 3.
 
-### 7.1 `agent.yaml` - Agent definition
+### 8.1 `agent.yaml`
 
 ```yaml
 kind: hosted
 name: resume-job-fit-evaluator
 description: >
-  A multi-agent workflow that evaluates resume-to-job fit.
+  A helpful assistant.
 metadata:
   authors:
-    - Microsoft
-  tags:
-    - Multi-Agent Workflow
-    - Resume Evaluator
+    - ShivamGoyal03
 protocols:
   - protocol: responses
-    version: v1
+    version: 1.0.0
+resources:
+  cpu: '0.25'
+  memory: 0.5Gi
 environment_variables:
-  - name: PROJECT_ENDPOINT
-    value: ${PROJECT_ENDPOINT}
+  - name: AZURE_AI_PROJECT_ENDPOINT
+    value: ${AZURE_AI_PROJECT_ENDPOINT}
   - name: MODEL_DEPLOYMENT_NAME
     value: ${MODEL_DEPLOYMENT_NAME}
+dockerfile_path: Dockerfile
 ```
 
-**Key difference from Lab 01:** The `environment_variables` section may include additional variables for MCP endpoints or other tool configuration. The `name` and `description` reflect the multi-agent use case.
+### 8.2 `main.py`
 
-### 7.2 `main.py` - Multi-agent workflow code
-
-The scaffold includes:
-- **Multiple agent instruction strings** (one const per agent)
-- **Multiple [`AzureAIAgentClient.as_agent()`](https://learn.microsoft.com/python/api/overview/azure/ai-agents-readme) context managers** (one per agent)
-- **[`WorkflowBuilder`](https://learn.microsoft.com/agent-framework/workflows/agents-in-workflows)** to wire agents together
-- **`from_agent_framework()`** to serve the workflow as an HTTP endpoint
+A single agent identical to Lab 01:
 
 ```python
-from agent_framework import WorkflowBuilder, tool
-from agent_framework.azure import AzureAIAgentClient
-from azure.ai.agentserver.agentframework import from_agent_framework
+import os
+from agent_framework import Agent
+from agent_framework.foundry import FoundryChatClient
+from agent_framework_foundry_hosting import ResponsesHostServer
 ```
 
-The extra import [`WorkflowBuilder`](https://learn.microsoft.com/agent-framework/workflows/agents-in-workflows) is new compared to Lab 01.
+`AgentExecutor` and `WorkflowBuilder` are the key additions compared to Lab 01’s single-agent pattern.
 
-### 7.3 `requirements.txt` - Additional dependencies
-
-The multi-agent project uses the same base packages as Lab 01, plus any MCP-related packages:
+### 8.3 `requirements.txt` - Dependencies
 
 ```
-agent-framework-azure-ai==1.0.0rc3
-agent-framework-core==1.0.0rc3
-azure-ai-agentserver-agentframework==1.0.0b16
-azure-ai-agentserver-core==1.0.0b16
+agent-framework>=1.1.0
+agent-framework-foundry-hosting
 debugpy
-agent-dev-cli --pre
+mcp
 ```
 
-> **Important version note:** The `agent-dev-cli` package requires the `--pre` flag in `requirements.txt` to install the latest preview version. This is required for Agent Inspector compatibility with `agent-framework-core==1.0.0rc3`. See [Module 8 - Troubleshooting](08-troubleshooting.md) for version details.
+| Package | Purpose |
+|---------|---------|
+| [`agent-framework>=1.1.0`](https://learn.microsoft.com/agent-framework/overview/) | Core runtime: `Agent`, `AgentExecutor`, `WorkflowBuilder`, `@tool` |
+| [`agent-framework-foundry-hosting`](https://learn.microsoft.com/agent-framework/) | `ResponsesHostServer` + Foundry hosting integration |
+| `debugpy` | Python debugging (F5 in VS Code) |
+| `mcp` | Microsoft Learn MCP client used by the GapAnalyzer tool |
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| [`agent-framework-azure-ai`](https://learn.microsoft.com/agent-framework/overview/) | `1.0.0rc3` | Azure AI integration for [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) |
-| [`agent-framework-core`](https://learn.microsoft.com/agent-framework/overview/) | `1.0.0rc3` | Core runtime (includes WorkflowBuilder) |
-| `azure-ai-agentserver-agentframework` | `1.0.0b16` | Hosted agent server runtime |
-| `azure-ai-agentserver-core` | `1.0.0b16` | Core agent server abstractions |
-| `debugpy` | latest | Python debugging (F5 in VS Code) |
-| `agent-dev-cli` | `--pre` | Local dev CLI + Agent Inspector backend |
-
-### 7.4 `Dockerfile` - Same as Lab 01
+### 8.4 `Dockerfile` - Same as Lab 01
 
 The Dockerfile is identical to Lab 01's - it copies files, installs dependencies from `requirements.txt`, exposes port 8088, and runs `python main.py`.
 
 ```dockerfile
-FROM python:3.14-slim
+FROM python:3.12-slim
 WORKDIR /app
-COPY ./ .
-RUN pip install --upgrade pip && \
-    if [ -f requirements.txt ]; then \
+COPY . user_agent/
+WORKDIR /app/user_agent
+RUN if [ -f requirements.txt ]; then \
         pip install -r requirements.txt; \
     else \
-      echo "No requirements.txt found" >&2; exit 1; \
+        echo "No requirements.txt found"; \
     fi
+
 EXPOSE 8088
+
 CMD ["python", "main.py"]
 ```
 
@@ -197,9 +187,9 @@ CMD ["python", "main.py"]
 
 - [ ] Scaffold wizard completed → new project structure is visible
 - [ ] You can see all files: `agent.yaml`, `main.py`, `Dockerfile`, `requirements.txt`, `.env`
-- [ ] `main.py` includes `WorkflowBuilder` import (confirms multi-agent template was selected)
-- [ ] `requirements.txt` includes both `agent-framework-core` and `agent-framework-azure-ai`
-- [ ] You understand how the multi-agent scaffold differs from the single-agent scaffold (multiple agents, WorkflowBuilder, MCP tools)
+- [ ] `requirements.txt` includes `agent-framework>=1.1.0` and `agent-framework-foundry-hosting`
+- [ ] You understand that `main.py` is a stub - `mcp` and `WorkflowBuilder` are added in Module 3
+- [ ] Next step: update `requirements.txt` (add `mcp`) and `main.py` (add WorkflowBuilder graph)
 
 ---
 

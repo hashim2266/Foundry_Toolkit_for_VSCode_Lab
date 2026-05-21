@@ -24,8 +24,8 @@ Before deploying, verify every item below:
    - Open `PersonalCareerCopilot/agent.yaml` and verify:
      ```yaml
      environment_variables:
-       - name: PROJECT_ENDPOINT
-         value: ${PROJECT_ENDPOINT}
+       - name: AZURE_AI_PROJECT_ENDPOINT
+         value: ${AZURE_AI_PROJECT_ENDPOINT}
        - name: MODEL_DEPLOYMENT_NAME
          value: ${MODEL_DEPLOYMENT_NAME}
      ```
@@ -33,12 +33,10 @@ Before deploying, verify every item below:
 
 5. **`requirements.txt` has correct versions:**
    ```
-   agent-framework-azure-ai==1.0.0rc3
-   agent-framework-core==1.0.0rc3
-   azure-ai-agentserver-agentframework==1.0.0b16
-   azure-ai-agentserver-core==1.0.0b16
+   agent-framework>=1.1.0
+   agent-framework-foundry-hosting
    debugpy
-   agent-dev-cli --pre
+   mcp
    ```
 
 ---
@@ -94,23 +92,9 @@ If the agent is running via F5 with the Agent Inspector open:
 
 Watch the VS Code **Output** panel (select "Microsoft Foundry" dropdown):
 
-```mermaid
-flowchart LR
-    A["Docker Build"] --> B["Push to ACR"]
-    B --> C["Agent Registration"]
-    C --> D["Container Start"]
-    D --> E["/responses ready"]
-
-    style A fill:#3498DB,color:#fff
-    style B fill:#9B59B6,color:#fff
-    style C fill:#E67E22,color:#fff
-    style D fill:#27AE60,color:#fff
-    style E fill:#2ECC71,color:#fff
-```
-
-1. **Docker build** - Builds the container from your `Dockerfile`:
+1. **Docker build** - Builds the container from your `Dockerfile`
    ```
-   Step 1/6 : FROM python:3.14-slim
+   Step 1/6 : FROM python:3.12-slim
    Step 2/6 : WORKDIR /app
    ...
    Successfully built abc123def456
@@ -128,7 +112,7 @@ flowchart LR
 
 - **All four agents are inside one container.** Foundry sees a single hosted agent. The WorkflowBuilder graph runs internally.
 - **MCP calls go outbound.** The container needs internet access to reach `https://learn.microsoft.com/api/mcp`. Foundry's managed infrastructure provides this by default.
-- **[Managed Identity](https://learn.microsoft.com/python/api/overview/azure/identity-readme#managed-identity-support).** In the hosted environment, `get_credential()` in `main.py` returns `ManagedIdentityCredential()` (because `MSI_ENDPOINT` is set). This is automatic.
+- **[Managed Identity](https://learn.microsoft.com/python/api/overview/azure/identity-readme#managed-identity-support).** In the hosted environment, `DefaultAzureCredential` automatically resolves to `ManagedIdentityCredential` (because `MSI_ENDPOINT` is set in the container). This is automatic.
 
 ---
 
@@ -179,15 +163,18 @@ Error: Docker build failed / Cannot connect to Docker daemon
 ### Error 3: pip install fails during Docker build
 
 ```
-Error: Could not find a version that satisfies the requirement agent-dev-cli
+Error: Could not find a version that satisfies the requirement agent-framework
 ```
 
-**Fix:** The `--pre` flag in `requirements.txt` is handled differently in Docker. Ensure your `requirements.txt` has:
+**Fix:** Verify `requirements.txt` matches:
 ```
-agent-dev-cli --pre
+agent-framework>=1.1.0
+agent-framework-foundry-hosting
+debugpy
+mcp
 ```
 
-If Docker still fails, create a `pip.conf` or pass `--pre` via a build argument. See [Module 8](08-troubleshooting.md).
+If the build still fails, your Docker network may be blocking PyPI. Check `docker info` for proxy settings.
 
 ### Error 4: MCP tool fails in hosted agent
 

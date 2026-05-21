@@ -22,7 +22,7 @@ Prior to delivering the workshop, please:
 | Workshop documentation        | [Repository](https://github.com/microsoft-foundry/Foundry_Toolkit_for_VSCode_Lab) | Source repository, lab READMEs, step-by-step modules                                       |
 | Lab 01 - single agent         | [Lab 01](../workshop/lab01-single-agent/README.md)                               | Hands-on lab: build, test, and deploy the *Explain Like I'm an Executive* hosted agent     |
 | Lab 02 - multi-agent workflow | [Lab 02](../workshop/lab02-multi-agent/README.md)                                | Hands-on lab: build the 4-agent *Resume to Job Fit Evaluator* workflow                     |
-| Demo 1: Executive Agent             | [ExecutiveAgent](../ExecutiveAgent/)                                                              | Lab 01 demo: translate technical jargon into an executive summary                          |
+| Demo 1: Executive Agent             | [Lab01 agent](../workshop/lab01-single-agent/agent/)                                              | Lab 01 demo: translate technical jargon into an executive summary                          |
 | Demo 2: Resume to Job Fit Evaluator | [PersonalCareerCopilot](../workshop/lab02-multi-agent/PersonalCareerCopilot/)                     | Lab 02 demo: 4-agent workflow that scores resume-job fit and generates recommendations     |
 | Known issues                  | [KNOWN_ISSUES.md](../KNOWN_ISSUES.md)                                            | Workarounds for known issues you may hit during delivery                                   |
 
@@ -98,7 +98,7 @@ The deck follows the same flow as the labs. Suggested talking points for each se
 | Why hosted agents?          | Managed runtime, ACR-based deployment, OpenAI-compatible `/responses` API, scoped to Foundry projects.        |
 | Architecture diagram        | Walk through the [README architecture](../README.md#architecture): scaffold, Inspector, ACR, Agent Service.   |
 | Anatomy of a hosted agent   | `agent.yaml`, `Dockerfile`, `main.py`, `requirements.txt` - what each file does.                              |
-| Live demo: Executive Agent  | Switch to VS Code and run the [`ExecutiveAgent/`](../ExecutiveAgent/) demo end-to-end (see [Demo 1](#demo-1-executive-agent)). |
+| Live demo: Executive Agent  | Switch to VS Code and run the [`workshop/lab01-single-agent/agent/`](../workshop/lab01-single-agent/agent/) demo end-to-end (see [Demo 1](#demo-1-executive-agent)). |
 | Live demo: Resume to Job Fit Evaluator | Switch to VS Code and run the [`PersonalCareerCopilot/`](../workshop/lab02-multi-agent/PersonalCareerCopilot/) 4-agent demo (see [Demo 2](#demo-2-resume-to-job-fit-evaluator)). |
 | Lab 01 brief                | Hand off to learners. Point at [`workshop/lab01-single-agent/README.md`](../workshop/lab01-single-agent/README.md). |
 | Multi-agent patterns        | Sequential vs concurrent vs handoff - preview before Lab 02 starts.                                           |
@@ -113,17 +113,17 @@ Two live demos are included in the delivery. Allocate 10 minutes to each.
 
 | Demo | Lab | Files | What to show |
 |------|-----|-------|--------------|
-| Executive Agent | Lab 01 | [`ExecutiveAgent/`](../ExecutiveAgent/) | Single hosted agent; translate technical jargon into an executive summary |
+| Executive Agent | Lab 01 | [`workshop/lab01-single-agent/agent/`](../workshop/lab01-single-agent/agent/) | Single hosted agent; translate technical jargon into an executive summary |
 | Resume to Job Fit Evaluator | Lab 02 | [`workshop/lab02-multi-agent/PersonalCareerCopilot/`](../workshop/lab02-multi-agent/PersonalCareerCopilot/) | 4-agent orchestration; score resume-job fit and generate a recommendation |
 
 ### Demo 1: Executive Agent
 
-A standalone agent in [`ExecutiveAgent/`](../ExecutiveAgent/). Use this as a 10-minute demo before Lab 01.
+A standalone agent in [`workshop/lab01-single-agent/agent/`](../workshop/lab01-single-agent/agent/). Use this as a 10-minute demo before Lab 01.
 
-1. Open [`ExecutiveAgent/main.py`](../ExecutiveAgent/main.py) and walk through the agent definition (system prompt, model, framework).
+1. Open [`workshop/lab01-single-agent/agent/main.py`](../workshop/lab01-single-agent/agent/main.py) and walk through the agent definition (system prompt, model, framework).
 2. Press `F5` to launch the **Agent Inspector** locally.
 3. Paste the sample prompt from the [README](../README.md#see-it-in-action) and show the executive-summary response.
-4. Show [`ExecutiveAgent/agent.yaml`](../ExecutiveAgent/agent.yaml) and [`ExecutiveAgent/Dockerfile`](../ExecutiveAgent/Dockerfile) to explain the deployment artefacts.
+4. Show [`workshop/lab01-single-agent/agent/agent.yaml`](../workshop/lab01-single-agent/agent/agent.yaml) and [`workshop/lab01-single-agent/agent/Dockerfile`](../workshop/lab01-single-agent/agent/Dockerfile) to explain the deployment artefacts.
 5. Demonstrate the deployment flow (Docker build, ACR push, hosted agent create) without waiting for completion.
 
 ### Demo 2: Resume to Job Fit Evaluator

@@ -1,3 +1,4 @@
 {
-  "projectId": "<your-foundry-project-id>"
+  "projectId": "<your-foundry-project-id>",
+  "containerRegistry": "<your-container-registry>"
 }

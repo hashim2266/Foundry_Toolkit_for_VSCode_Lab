@@ -1,33 +1,26 @@
+# Copyright (c) Microsoft. All rights reserved.
 """
 Explain Like I'm an Executive Agent.
 Uses Microsoft Agent Framework with Microsoft Foundry.
 Ready for deployment to Foundry Hosted Agent service.
 """
 
-import asyncio
 import logging
 import os
 
+from agent_framework import Agent
+from agent_framework.foundry import FoundryChatClient
+from agent_framework_foundry_hosting import ResponsesHostServer
+from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
-load_dotenv(override=False)
-
-from agent_framework.azure import AzureAIAgentClient
-from azure.ai.agentserver.agentframework import from_agent_framework
-from azure.identity.aio import DefaultAzureCredential
+# Load environment variables from .env file
+load_dotenv(override=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("executive-agent")
 
-PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv(
-    "PROJECT_ENDPOINT"
-)
-MODEL_DEPLOYMENT_NAME = os.getenv(
-    "AZURE_AI_MODEL_DEPLOYMENT_NAME",
-    os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini"),
-)
-
-EXECUTIVE_AGENT_INSTRUCTIONS = """You are an “Explain Like I’m an Executive” agent.
+EXECUTIVE_AGENT_INSTRUCTIONS = """You are an "Explain Like I'm an Executive" agent.
 
 Purpose:
 Your job is to translate complex technical or operational information into
@@ -71,7 +64,7 @@ Executive Summary:
 Examples:
 
 Input:
-“The API latency increased due to thread pool exhaustion caused by synchronous calls introduced in v3.2.”
+"The API latency increased due to thread pool exhaustion caused by synchronous calls introduced in v3.2."
 
 Output:
 Executive Summary:
@@ -80,7 +73,7 @@ Executive Summary:
 - Next step: The change has been rolled back and a fix is being prepared before redeployment.
 
 Input:
-“Nightly ETL failed because the upstream schema changed (customer_id became string). Downstream dashboard shows missing data for APAC.”
+"Nightly ETL failed because the upstream schema changed (customer_id became string). Downstream dashboard shows missing data for APAC."
 
 Output:
 Executive Summary:
@@ -89,7 +82,7 @@ Executive Summary:
 - Next step: The pipeline is being updated to support the new format and restore reporting.
 
 Input:
-“Static analysis flagged a hardcoded secret in the repository. The secret may have been exposed in commit history.”
+"Static analysis flagged a hardcoded secret in the repository. The secret may have been exposed in commit history."
 
 Output:
 Executive Summary:
@@ -104,44 +97,29 @@ Notes:
 - Consistency of structure is more important than detail"""
 
 
-def validate_configuration() -> None:
-    """Validate required runtime configuration before starting the server."""
-    missing_vars = []
-
-    if not PROJECT_ENDPOINT:
-        missing_vars.append("AZURE_AI_PROJECT_ENDPOINT or PROJECT_ENDPOINT")
-
-    if not MODEL_DEPLOYMENT_NAME:
-        missing_vars.append("AZURE_AI_MODEL_DEPLOYMENT_NAME or MODEL_DEPLOYMENT_NAME")
-
-    if missing_vars:
-        missing = ", ".join(missing_vars)
-        raise RuntimeError(
-            f"Missing required environment variable(s): {missing}. "
-            "Set them in the workspace .env file or your shell before starting the agent."
-        )
-
-
-async def main():
-    """Main function to run the agent as a web server."""
-    validate_configuration()
+def main():
     logger.info("Starting executive summary hosted agent")
 
-    async with (
-        DefaultAzureCredential() as credential,
-        AzureAIAgentClient(
-            project_endpoint=PROJECT_ENDPOINT,
-            model_deployment_name=MODEL_DEPLOYMENT_NAME,
-            credential=credential,
-        ).as_agent(
-            name="ExplainLikeImAnExecutiveAgent",
-            instructions=EXECUTIVE_AGENT_INSTRUCTIONS,
-        ) as agent,
-    ):
-        logger.info("Executive agent server running on http://localhost:8088")
-        server = from_agent_framework(agent)
-        await server.run_async()
+    client = FoundryChatClient(
+        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+        model=os.environ["MODEL_DEPLOYMENT_NAME"],
+        credential=DefaultAzureCredential(),
+    )
+
+    agent = Agent(
+        client=client,
+        instructions=EXECUTIVE_AGENT_INSTRUCTIONS,
+        # History is managed by the hosting infrastructure; no need to store
+        # it in the service. See:
+        # https://developers.openai.com/api/reference/resources/responses/methods/create
+        default_options={"store": False},
+    )
+
+    logger.info("Executive agent server running on http://localhost:8088")
+    server = ResponsesHostServer(agent)
+    server.run()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
+

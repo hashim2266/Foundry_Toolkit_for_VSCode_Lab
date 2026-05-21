@@ -115,25 +115,18 @@ Docker is only needed if you want to build and test the container image locally 
 
 ## 3. Install VS Code extensions
 
-You need three extensions. Install them **before** the workshop begins.
+You need two core extensions. Install them **before** the workshop begins.
 
-### 3.1 Microsoft Foundry for VS Code
+### 3.1 Foundry Toolkit for VS Code (recommended entry point)
 
 1. Open VS Code.
 2. Press `Ctrl+Shift+X` to open the Extensions panel.
-3. In the search box, type **"Microsoft Foundry"**.
-4. Find **Microsoft Foundry for Visual Studio Code** (publisher: Microsoft, ID: `TeamsDevApp.vscode-ai-foundry`).
+3. In the search box, type **"Foundry Toolkit"**.
+4. Find **Foundry Toolkit for VS Code** (publisher: Microsoft, ID: `ms-windows-ai-studio.windows-ai-studio`).
 5. Click **Install**.
-6. After installation, you should see the **Microsoft Foundry** icon appear in the Activity Bar (left sidebar).
+6. After installation, you should see the **Foundry Toolkit** icon appear in the Activity Bar (left sidebar).
 
-### 3.2 Foundry Toolkit
-
-1. In the Extensions panel (`Ctrl+Shift+X`), search for **"Foundry Toolkit"**.
-2. Find **Foundry Toolkit** (publisher: Microsoft, ID: `ms-windows-ai-studio.windows-ai-studio`).
-3. Click **Install**.
-4. The **Foundry Toolkit** icon should appear in the Activity Bar.
-
-### 3.3 Python
+### 3.2 Python
 
 1. In the Extensions panel, search for **"Python"**.
 2. Find **Python** (publisher: Microsoft, ID: `ms-python.python`).
@@ -143,7 +136,7 @@ You need three extensions. Install them **before** the workshop begins.
 
 ## 4. Sign into Azure from VS Code
 
-The [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/overview/) uses [`DefaultAzureCredential`](https://learn.microsoft.com/azure/developer/python/sdk/authentication/credential-chains#defaultazurecredential-overview) for authentication. You need to be signed into Azure in VS Code.
+The [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/overview/agent-framework-overview) uses [`DefaultAzureCredential`](https://learn.microsoft.com/azure/developer/python/sdk/authentication/credential-chains#defaultazurecredential-overview) for authentication. You need to be signed into Azure in VS Code.
 
 ### 4.1 Sign in via VS Code
 
@@ -192,7 +185,6 @@ Before proceeding, be aware of current limitations:
 
 - [**Hosted Agents**](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) are currently in **public preview** - not recommended for production workloads.
 - **Supported regions are limited** - check [region availability](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents#region-availability) before creating resources. If you pick an unsupported region, deployment will fail.
-- The `azure-ai-agentserver-agentframework` package is pre-release (`1.0.0b16`) - APIs may change.
 - Scale limits: hosted agents support 0-5 replicas (including scale-to-zero).
 
 ---
@@ -205,7 +197,6 @@ Run through every item below. If any step fails, go back and fix it before conti
 - [ ] Python 3.10+ is on your PATH (`python --version` prints `3.10.x` or higher)
 - [ ] Azure CLI is installed (`az --version` prints `2.80.0` or higher)
 - [ ] Azure Developer CLI is installed (`azd version` prints version info)
-- [ ] Microsoft Foundry extension is installed (icon visible in Activity Bar)
 - [ ] Foundry Toolkit extension is installed (icon visible in Activity Bar)
 - [ ] Python extension is installed
 - [ ] You are signed into Azure in VS Code (check Accounts icon, bottom-left)
@@ -214,8 +205,8 @@ Run through every item below. If any step fails, go back and fix it before conti
 
 ### Checkpoint
 
-Open VS Code's Activity Bar and confirm you can see both the **Foundry Toolkit** and **Microsoft Foundry** sidebar views. Click each one to verify they load without errors.
+Open VS Code's Activity Bar and confirm Foundry views/commands load without errors.
 
 ---
 
-**Next:** [01 - Install Foundry Toolkit & Foundry Extension →](01-install-foundry-toolkit.md)
+**Next:** [01 - Install Foundry Toolkit →](01-install-foundry-toolkit.md)

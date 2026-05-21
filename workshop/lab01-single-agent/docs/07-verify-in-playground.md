@@ -141,8 +141,10 @@ The Foundry Portal provides a web-based playground that's useful for sharing wit
 ### Step 3: Find your deployed agent
 
 1. In the project left navigation, click **Build** → **Agents** (or look for the **Agents** section).
-2. You should see a list of agents. Find your deployed agent (e.g., `ExecutiveAgent`).
+2. You should see a list of agents. Find your deployed agent (e.g., `my-agent`).
 3. Click on the agent name to open its detail page.
+
+![Microsoft Foundry portal Agents page showing a deployed hosted agent in the list](images/06-foundry-portal-agent-list.png)
 
 ### Step 4: Open the Playground
 
@@ -150,7 +152,7 @@ The Foundry Portal provides a web-based playground that's useful for sharing wit
 2. Click **Open in playground** (or **Try in playground**).
 3. A chat interface opens.
 
-![Microsoft Foundry portal Playground showing ExecutiveAgent with Running status and an Executive Summary response in the chat](images/07-foundry-playground-chat.png)
+![Microsoft Foundry portal Playground showing my-agent with Running status and an Executive Summary response in the chat](images/07-foundry-playground-chat.png)
 
 ### Step 5: Run the same smoke tests
 

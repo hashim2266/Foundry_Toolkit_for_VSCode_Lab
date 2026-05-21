@@ -64,10 +64,12 @@ MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
 ### 3. Run locally
 
 ```powershell
-python -m debugpy --listen 127.0.0.1:5679 -m agentdev run main.py --verbose --port 8088
+python -m debugpy --listen 127.0.0.1:5679 main.py --port 8088
 ```
 
-Or use the VS Code task: `Ctrl+Shift+P` → **Tasks: Run Task** → **Run Lab02 HTTP Server**.
+Or use the VS Code task: `Ctrl+Shift+P` → **Tasks: Run Task** → **Run Agent/Workflow HTTP Server**.
+
+For F5 debugging, use **Debug Local Agent Server**.
 
 ### 4. Test with Agent Inspector
 
@@ -117,7 +119,7 @@ PersonalCareerCopilot/
 
 Defines the hosted agent for Foundry Agent Service:
 - `kind: hosted` - runs as a managed container
-- `protocols: [responses v1]` - exposes the `/responses` HTTP endpoint
+- `protocols` - `responses` protocol with `version: 1.0.0`, exposing the `/responses` HTTP endpoint
 - `environment_variables` - `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` are injected at deploy time
 
 ### `main.py`

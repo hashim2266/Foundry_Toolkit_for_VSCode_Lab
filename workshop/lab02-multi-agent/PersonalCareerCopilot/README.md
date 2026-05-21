@@ -146,7 +146,7 @@ Contains:
 
 | Issue | Fix |
 |-------|-----|
-| `RuntimeError: Missing required environment variable(s)` | Create `.env` with `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` |
+| `KeyError: 'AZURE_AI_PROJECT_ENDPOINT'` | Create `.env` with `AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` |
 | `ModuleNotFoundError: No module named 'agent_framework'` | Activate venv and run `pip install -r requirements.txt` |
 | No Microsoft Learn URLs in output | Check internet connectivity to `https://learn.microsoft.com/api/mcp` |
 | Only 1 gap card (truncated) | Verify `GAP_ANALYZER_INSTRUCTIONS` includes the `CRITICAL:` block |

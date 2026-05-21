@@ -8,7 +8,7 @@ This module covers common errors, fixes, and debugging strategies specific to th
 
 | Error / Symptom | Likely Cause | Fix |
 |----------------|-------------|-----|
-| `RuntimeError: Missing required environment variable(s)` | `.env` file missing or values not set | Create `.env` with `AZURE_AI_PROJECT_ENDPOINT=<your-endpoint>` and `MODEL_DEPLOYMENT_NAME=<your-model>` |
+| `KeyError: 'AZURE_AI_PROJECT_ENDPOINT'` | `.env` file missing or values not set | Create `.env` with `AZURE_AI_PROJECT_ENDPOINT=<your-endpoint>` and `MODEL_DEPLOYMENT_NAME=<your-model>` |
 | `ModuleNotFoundError: No module named 'agent_framework'` | Virtual environment not activated or dependencies not installed | Run `.\.venv\Scripts\Activate.ps1` then `pip install -r requirements.txt` |
 | `ModuleNotFoundError: No module named 'mcp'` | MCP package not installed | Add `mcp` to `requirements.txt` then run `pip install -r requirements.txt` |
 | Agent starts but returns empty response | `output_executors` mismatch or missing edges | Verify `output_executors=[gap_executor]` and all edges exist in `WorkflowBuilder` |
@@ -169,7 +169,7 @@ DELETE https://learn.microsoft.com/api/mcp → 405 (Method Not Allowed)
    | Error in logs | Cause | Fix |
    |--------------|-------|-----|
    | `ModuleNotFoundError` | `requirements.txt` missing a package | Add the package, redeploy |
-   | `RuntimeError: Missing required environment variable` | `agent.yaml` env vars not set | Update `agent.yaml` → `environment_variables` section |
+   | `KeyError: 'AZURE_AI_PROJECT_ENDPOINT'` | `agent.yaml` or `.env` env vars not set | Update `agent.yaml` → `environment_variables` section (hosted) or `.env` (local) |
    | `azure.identity.CredentialUnavailableError` | Managed Identity not configured | Foundry sets this automatically - ensure you're deploying via the extension |
    | `OSError: port 8088 already in use` | Dockerfile exposes wrong port or port conflict | Verify `EXPOSE 8088` in Dockerfile and `CMD ["python", "main.py"]` |
    | Container exits with code 1 | Unhandled exception in `main()` | Test locally first ([Module 5](05-test-locally.md)) to catch errors before deploying |

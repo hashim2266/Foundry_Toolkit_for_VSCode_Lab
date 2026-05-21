@@ -1,8 +1,8 @@
-# Module 3 - Create a New Hosted Agent (Auto-Scaffolded by Foundry Extension)
+# Module 3 - Create a New Hosted Agent (Auto-Scaffolded by Foundry Toolkit)
 
 In this module, you use Foundry Toolkit (Microsoft Foundry commands in VS Code) to **scaffold a new [hosted agent](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) project**. The scaffold generates the project structure for you - including `agent.yaml`, `main.py`, `Dockerfile`, `requirements.txt`, a `.env` file, and a VS Code debug configuration. After scaffolding, you customize these files with your agent's instructions, tools, and configuration.
 
-> **Key concept:** The `agent/` folder in this lab is an example of what the Foundry extension generates when you run this scaffold command. You don't write these files from scratch - the extension creates them, and then you modify them.
+> **Key concept:** The `agent/` folder in this lab is an example of what Foundry Toolkit generates when you run this scaffold command. You don't write these files from scratch - Foundry Toolkit creates them, and then you modify them.
 
 ### Scaffold wizard flow
 
@@ -142,7 +142,16 @@ Open `agent.yaml`. It looks like this:
 
 ```yaml
 kind: hosted
-name: ''
+name: my-first-agent
+description: >
+  A hosted agent deployed to Microsoft Foundry Agent Service.
+metadata:
+  authors:
+    - Microsoft
+  tags:
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Hosted Agent
 protocols:
   - protocol: responses
     version: 1.0.0

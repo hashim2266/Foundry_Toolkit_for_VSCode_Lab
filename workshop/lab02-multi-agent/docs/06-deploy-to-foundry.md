@@ -24,21 +24,19 @@ Before deploying, verify every item below:
    - Open `PersonalCareerCopilot/agent.yaml` and verify:
      ```yaml
      environment_variables:
-          - name: AZURE_AI_PROJECT_ENDPOINT
+       - name: AZURE_AI_PROJECT_ENDPOINT
          value: ${PROJECT_ENDPOINT}
-          - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+       - name: MODEL_DEPLOYMENT_NAME
          value: ${MODEL_DEPLOYMENT_NAME}
      ```
    - These must match the env vars your `main.py` reads.
 
 5. **`requirements.txt` has correct versions:**
    ```
-   agent-framework-azure-ai==1.0.0rc3
-   agent-framework-core==1.0.0rc3
-   azure-ai-agentserver-agentframework==1.0.0b16
-   azure-ai-agentserver-core==1.0.0b16
+   agent-framework>=1.1.0
+   agent-framework-foundry-hosting
    debugpy
-   agent-dev-cli
+   mcp
    ```
 
 ---

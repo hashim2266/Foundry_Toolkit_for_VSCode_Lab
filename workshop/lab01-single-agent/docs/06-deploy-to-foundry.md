@@ -126,8 +126,8 @@ The wizard shows the available container resource presets:
    | Status | Meaning |
    |--------|---------|
    | **Running** | Container is running and the agent is ready |
-   | **Pending** | Container is starting up — wait 30–60 seconds |
-   | **Failed** | Container failed to start — check logs (see troubleshooting below) |
+   | **Pending** | Container is starting up - wait 30–60 seconds |
+   | **Failed** | Container failed to start - check logs (see troubleshooting below) |
 
    > **If you see "Pending" for more than 2 minutes:** The container may still be pulling the base image. Wait a bit longer. If it stays pending, open the Output panel and check the deployment log.
 

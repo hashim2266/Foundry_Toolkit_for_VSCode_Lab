@@ -1,3 +1,7 @@
 {
-  "projectId": "<your-foundry-project-id>"
+  "hostedAgentDeployOptions": {
+    "deploymentMethod": "container"
+  },
+  "projectId": "<your-foundry-project-id>",
+  "containerRegistry":"<your-container-registry-name>.azurecr.io"
 }

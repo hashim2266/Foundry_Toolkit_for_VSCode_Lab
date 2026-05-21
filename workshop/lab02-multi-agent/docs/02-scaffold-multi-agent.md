@@ -65,7 +65,7 @@ flowchart LR
 
 ## Step 4: Select template
 
-> ⚠️ **Note (Foundry Toolkit v1.2.1):** The wizard does not include a dedicated multi-agent workflow template. Select **Basic - Agent Framework** to scaffold a base project, then use the pre-built `PersonalCareerCopilot/` folder in this repo for the full multi-agent implementation. See [KI-006](../../KNOWN_ISSUES.md#ki-006--no-multi-agent-wizard-template-in-aitk-v121) for details.
+> ⚠️ **Note (Foundry Toolkit v1.2.1):** The wizard does not include a dedicated multi-agent workflow template. Select **Basic - Agent Framework** to scaffold a base project, then use the pre-built `PersonalCareerCopilot/` folder in this repo for the full multi-agent implementation. See [KI-006](../../../KNOWN_ISSUES.md#ki-006--no-multi-agent-wizard-template-in-aitk-v121) for details.
 
 1. Select **Basic - Agent Framework**.
 2. Click **Next**.
@@ -134,7 +134,7 @@ protocols:
   - protocol: responses
     version: v1
 environment_variables:
-  - name: PROJECT_ENDPOINT
+  - name: AZURE_AI_PROJECT_ENDPOINT
     value: ${PROJECT_ENDPOINT}
   - name: MODEL_DEPLOYMENT_NAME
     value: ${MODEL_DEPLOYMENT_NAME}
@@ -146,7 +146,7 @@ environment_variables:
 
 The scaffold includes:
 - **Multiple agent instruction strings** (one const per agent)
-- **[`Agent` + `AgentExecutor`](https://learn.microsoft.com/agent-framework/workflows/)** — one per agent, wrapped for the workflow graph
+- **[`Agent` + `AgentExecutor`](https://learn.microsoft.com/agent-framework/workflows/)** - one per agent, wrapped for the workflow graph
 - **[`WorkflowBuilder`](https://learn.microsoft.com/agent-framework/workflows/agents-in-workflows)** to define edges between agents
 - **`ResponsesHostServer`** to serve the workflow as an HTTP endpoint
 

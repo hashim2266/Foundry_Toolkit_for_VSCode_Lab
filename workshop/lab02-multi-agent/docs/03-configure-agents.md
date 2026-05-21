@@ -55,7 +55,7 @@ MICROSOFT_LEARN_MCP_ENDPOINT = os.getenv(
 )
 ```
 
-The MCP endpoint has a sensible default — only set it in `.env` if you need to override it.
+The MCP endpoint has a sensible default - only set it in `.env` if you need to override it.
 
 ---
 
@@ -297,7 +297,7 @@ matching_executor = AgentExecutor(matching_agent,  context_mode="last_agent")
 gap_executor      = AgentExecutor(gap_analyzer,    context_mode="last_agent")
 ```
 
-`AgentExecutor` is the workflow node abstraction — `context_mode="last_agent"` means each agent only sees its direct predecessor's output. Only GapAnalyzer gets `tools=[search_microsoft_learn_for_plan]`.
+`AgentExecutor` is the workflow node abstraction - `context_mode="last_agent"` means each agent only sees its direct predecessor's output. Only GapAnalyzer gets `tools=[search_microsoft_learn_for_plan]`.
 
 ### 4.2 Build the workflow graph
 

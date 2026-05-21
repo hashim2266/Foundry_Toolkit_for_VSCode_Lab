@@ -192,7 +192,7 @@ DELETE https://learn.microsoft.com/api/mcp → 405 (Method Not Allowed)
 
 ## Agent creation pattern
 
-All four agents share a single [`FoundryChatClient`](https://learn.microsoft.com/agent-framework/foundry/). Each `Agent` is wrapped in an [`AgentExecutor`](https://learn.microsoft.com/agent-framework/workflows/) — the unit the `WorkflowBuilder` operates on:
+All four agents share a single [`FoundryChatClient`](https://learn.microsoft.com/agent-framework/foundry/). Each `Agent` is wrapped in an [`AgentExecutor`](https://learn.microsoft.com/agent-framework/workflows/) - the unit the `WorkflowBuilder` operates on:
 
 ```python
 client = FoundryChatClient(
@@ -237,7 +237,7 @@ workflow_agent = (
 ResponsesHostServer(workflow_agent).run()
 ```
 
-`ResponsesHostServer` exposes the workflow at `http://localhost:8088/responses`. Callers interact with one endpoint — the internal 4-agent topology is transparent.
+`ResponsesHostServer` exposes the workflow at `http://localhost:8088/responses`. Callers interact with one endpoint - the internal 4-agent topology is transparent.
 
 ---
 
